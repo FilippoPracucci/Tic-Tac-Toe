@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "tic-tac-toe"
+version = "0.1.0"
+description = ""
+authors = ["Filippo Pracucci <filippo.pracucci@studio.unibo.it>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pygame = "^2.6.0"
+
+[tool.poetry.scripts]
+tic-tac-toe = "tic-tac-toe:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[[tool.poetry.source]]
+name = "PyPI"
+priority = "primary"

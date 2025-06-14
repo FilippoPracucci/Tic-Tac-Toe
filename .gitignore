@@ -1,0 +1,7 @@
+.vscode/
+
+### Python ###
+__pycache__/
+
+### Build ###
+build/
