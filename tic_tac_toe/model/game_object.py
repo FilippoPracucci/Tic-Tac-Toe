@@ -49,7 +49,7 @@ class GameObject(Sized, Positioned):
     @size.setter
     def size(self, value: Vector2):
         old_value = self._size
-        self._size = Vector2(value)
+        self._size = value
         if old_value is not None and old_value != self._size:
             logger.debug(f"{self} resized: {old_value} -> {self._size}")
 
@@ -60,7 +60,7 @@ class GameObject(Sized, Positioned):
     @position.setter
     def position(self, value: Vector2):
         old_value = self._position
-        self._position = Vector2(value)
+        self._position = value
         if old_value is not None and old_value != self._position:
             logger.debug(f"{self} moves: {old_value} -> {self._position}")
 
