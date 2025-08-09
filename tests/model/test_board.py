@@ -1,5 +1,6 @@
 from unittest import TestCase
-from tic_tac_toe.model.board import *
+from tic_tac_toe.model.grid import *
+from tic_tac_toe.model.game_object import Symbol, Mark
 
 class TestSymbol(TestCase):
     def test_is_nought(self):

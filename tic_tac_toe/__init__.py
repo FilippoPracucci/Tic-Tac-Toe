@@ -1,17 +1,9 @@
-from .model.game import *
 import pygame
+from .model.game import *
 from .log import logger, logging
-from typing import Optional
-
-@dataclass
-class Settings:
-    debug: bool = False
-    size: tuple = (600, 600)
-    fps: int = 60
-    host: Optional[str] = None
-    port: Optional[int] = None
-    gui: bool = True
-    dim: int = 3
+from .utils import Settings
+from .view import ShowNothingTicTacToeView
+from .controller.mark_utils import *
 
 class TicTacToeGame:
     def __init__(self, settings: Settings = None):
@@ -20,9 +12,17 @@ class TicTacToeGame:
             size=self.settings.size,
             dim=self.settings.dim
         )
+        self.dt = None
+        self.mark_utils = MarkUtils()
+        self.view = self.create_view() if self.settings.gui else ShowNothingTicTacToeView()
+        self.clock = pygame.time.Clock()
         self.running = True
         if self.settings.debug:
             logger.setLevel(logging.DEBUG)
+
+    def create_view(self):
+        from .view import ScreenTicTacToeView
+        return ScreenTicTacToeView(self.settings.size, self.mark_utils)
 
     def before_run(self):
         pygame.init()
@@ -36,12 +36,19 @@ class TicTacToeGame:
 
     def run(self):
         try:
+            self.dt = 0
             self.before_run()
             while self.running:
                 if self.tic_tac_toe.has_won(self.tic_tac_toe.turn):
-                    print(f"Player '{self.tic_tac_toe.turn.value}' has won!")
                     self.stop()
+                self.view.render(
+                    self.tic_tac_toe.config.cell_width_size,
+                    self.tic_tac_toe.config.cell_height_size,
+                    self.settings.dim,
+                    self.mark_utils.decompose(self.tic_tac_toe.marks)
+                )
                 self.at_each_run()
+                self.dt = self.clock.tick(self.settings.fps) / 1000
         finally:
             self.after_run()
 

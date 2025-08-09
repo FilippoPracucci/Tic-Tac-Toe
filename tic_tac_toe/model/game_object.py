@@ -1,4 +1,5 @@
 from pygame.math import Vector2
+from enum import Enum
 from ..log import logger
 
 class Sized:
@@ -68,3 +69,29 @@ class GameObject(Sized, Positioned):
         assert isinstance(other, type(self)) and other.name == self.name, f"Invalid override: {other} -> {self}"
         self.size = other.size
         self.position = other.position
+
+class Symbol(Enum):
+    NOUGHT = "O"
+    CROSS = "X"
+
+    @property
+    def is_nought(self) -> bool:
+        return self.value == "O"
+
+    @property
+    def is_cross(self) -> bool:
+        return self.value == "X"
+
+    @classmethod
+    def values(cls) -> list['Symbol']:
+        return list(cls.__members__.values())
+
+class Mark(GameObject):
+    from .grid import Cell
+    cell: Cell
+    symbol: Symbol
+
+    def __init__(self, cell: Cell, symbol: Symbol, size=None, position=None, name=None):
+        super().__init__(size, position, name or "mark_" + symbol.name)
+        self.cell = cell
+        self.symbol = symbol
