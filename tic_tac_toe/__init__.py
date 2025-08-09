@@ -14,11 +14,25 @@ class TicTacToeGame:
         )
         self.dt = None
         self.mark_utils = MarkUtils()
+        self.controller = self.create_controller()
         self.view = self.create_view() if self.settings.gui else ShowNothingTicTacToeView()
         self.clock = pygame.time.Clock()
         self.running = True
         if self.settings.debug:
             logger.setLevel(logging.DEBUG)
+
+    def create_controller(game):
+        from .controller.local import TicTacToeLocalController
+
+        class Controller(TicTacToeLocalController):
+            def __init__(self):
+                super().__init__(game.tic_tac_toe)
+
+            def on_game_over(this, _):
+                print(f"Player '{game.tic_tac_toe.turn.value}' has won!")
+                game.stop()
+
+        return Controller()
 
     def create_view(self):
         from .view import ScreenTicTacToeView
@@ -41,6 +55,8 @@ class TicTacToeGame:
             while self.running:
                 if self.tic_tac_toe.has_won(self.tic_tac_toe.turn):
                     self.stop()
+                self.controller.handle_inputs(self.dt)
+                self.controller.handle_events()
                 self.view.render(
                     self.tic_tac_toe.config.cell_width_size,
                     self.tic_tac_toe.config.cell_height_size,
