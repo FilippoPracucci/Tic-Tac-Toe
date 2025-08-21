@@ -1,0 +1,102 @@
+{
+    "type": 1,
+    "dict": {
+        "state": {
+            "marks": [
+                {
+                    "cell": {
+                        "x": 0,
+                        "y": 1,
+                        "$type": "Cell"
+                    },
+                    "symbol": {
+                        "name": "CROSS",
+                        "$type": "Symbol"
+                    },
+                    "$type": "Mark"
+                },
+                {
+                    "cell": {
+                        "x": 2,
+                        "y": 2,
+                        "$type": "Cell"
+                    },
+                    "symbol": {
+                        "name": "NOUGHT",
+                        "$type": "Symbol"
+                    },
+                    "$type": "Mark"
+                }
+            ],
+            "grid": {
+                "dim": 3,
+                "cells": [
+                    {
+                        "x": 0,
+                        "y": 0,
+                        "$type": "Cell"
+                    },
+                    {
+                        "x": 0,
+                        "y": 1,
+                        "$type": "Cell"
+                    },
+                    {
+                        "x": 0,
+                        "y": 2,
+                        "$type": "Cell"
+                    },
+                    {
+                        "x": 1,
+                        "y": 0,
+                        "$type": "Cell"
+                    },
+                    {
+                        "x": 1,
+                        "y": 1,
+                        "$type": "Cell"
+                    },
+                    {
+                        "x": 1,
+                        "y": 2,
+                        "$type": "Cell"
+                    },
+                    {
+                        "x": 2,
+                        "y": 0,
+                        "$type": "Cell"
+                    },
+                    {
+                        "x": 2,
+                        "y": 1,
+                        "$type": "Cell"
+                    },
+                    {
+                        "x": 2,
+                        "y": 2,
+                        "$type": "Cell"
+                    }
+                ],
+                "$type": "Grid"
+            },
+            "turn": {
+                "name": "CROSS",
+                "$type": "Symbol"
+            },
+            "config": {
+                "cell_width_size": 200.0,
+                "cell_height_size": 200.0,
+                "$type": "Config"
+            },
+            "size": {
+                "x": 600.0,
+                "y": 600.0,
+                "$type": "Vector2"
+            },
+            "time": 1.5,
+            "updates": 1,
+            "$type": "TicTacToe"
+        }
+    },
+    "$type": "Event"
+}

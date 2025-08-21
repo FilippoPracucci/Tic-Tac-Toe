@@ -8,7 +8,7 @@ class TicTacToe(Sized):
         self.size = Vector2(size)
         self.config = Config(self.size.x/dim, self.size.y/dim)
         self.grid = Grid(dim) if dim is not None else Grid()
-        self._marks = list()
+        self.marks = list()
         self.turn: Symbol = Symbol.CROSS
         self.updates = 0
         self.time = 0
@@ -22,7 +22,7 @@ class TicTacToe(Sized):
             self.turn == value.turn and \
             self.updates == value.updates and \
             self.time == value.time
-    
+
     def __hash__(self):
         return hash((self.size, self.config, self.grid, tuple(self.marks), self.turn, self.updates, self.time))
 
@@ -32,14 +32,22 @@ class TicTacToe(Sized):
                 f'size={self.size}, '
                 f'time={self.time}, '
                 f'updates={self.updates}, '
-                f'config={self.config}'
+                f'config={self.config}, '
                 f'marks={self.marks}, '
-                f'turn={self.turn.name}'
+                f'turn={repr(self.turn)}'
                 f')>')
 
     @property
     def marks(self) -> list[Mark]:
         return list(self._marks)
+    
+    @marks.setter
+    def marks(self, marks) -> list[Mark]:
+        self._marks = []
+        for mark in marks:
+            assert isinstance(mark, Mark), f"Invalid paddle: {mark}"
+            self._marks.append(mark)
+
 
     def place_mark(self, mark: Mark) -> bool:
         if list(map(lambda m: m.cell, self.marks)).__contains__(mark.cell):

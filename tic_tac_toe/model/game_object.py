@@ -74,6 +74,9 @@ class Symbol(Enum):
     NOUGHT = "O"
     CROSS = "X"
 
+    def __repr__(self):
+        return f"<{type(self).__name__}.{self.name}>"
+
     @property
     def is_nought(self) -> bool:
         return self.value == "O"
@@ -95,3 +98,9 @@ class Mark(GameObject):
         super().__init__(size, position, name or "mark_" + symbol.name)
         self.cell = cell
         self.symbol = symbol
+
+    def __eq__(self, other):
+        return super().__eq__(other) and self.cell == other.cell and self.symbol == other.symbol
+
+    def __repr__(self):
+        return super().__repr__().replace(')>', f", cell={self.cell}, symbol={self.symbol})>")
