@@ -1,5 +1,5 @@
 from unittest import TestCase
-from tic_tac_toe.model.game import *
+from tic_tac_toe.model import *
 
 class TestTicTacToe(TestCase):
     def setUp(self) -> None:

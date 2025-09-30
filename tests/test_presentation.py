@@ -1,4 +1,6 @@
 import unittest
+
+import pygame
 from tic_tac_toe import TicTacToe
 from tic_tac_toe.model.game_object import Mark, Symbol
 from tic_tac_toe.model.grid import Cell
@@ -12,7 +14,18 @@ DIR_CURRENT = pathlib.Path(__file__).parent
 class TestPresentation(unittest.TestCase):
     def setUp(self):
         tic_tac_toe = TicTacToe(size=(600, 600))
-        tic_tac_toe.marks = [Mark(Cell(0, 1), Symbol.CROSS), Mark(Cell(2, 2), Symbol.NOUGHT)]
+        tic_tac_toe.place_mark(Mark(
+            cell=Cell(0, 1),
+            symbol=Symbol.CROSS,
+            size=(tic_tac_toe.size / tic_tac_toe.grid.dim),
+            position=tic_tac_toe.config.cells_symbol_position.get((0, 1))
+        ))
+        tic_tac_toe.place_mark(Mark(
+            cell=Cell(2, 2),
+            symbol=Symbol.NOUGHT,
+            size=(tic_tac_toe.size / tic_tac_toe.grid.dim),
+            position=tic_tac_toe.config.cells_symbol_position.get((2, 2))
+        ))
         tic_tac_toe.update(1.5)
         self.event = Event(1, {"state": tic_tac_toe})
         self.serialized_event = (DIR_CURRENT / "expected.json").read_text()
