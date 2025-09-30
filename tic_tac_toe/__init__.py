@@ -1,5 +1,5 @@
 import pygame
-from .model.game import *
+from .model import *
 from .log import logger, logging
 from .utils import Settings
 from .view import ShowNothingTicTacToeView
@@ -36,7 +36,13 @@ class TicTacToeGame:
 
     def create_view(self):
         from .view import ScreenTicTacToeView
-        return ScreenTicTacToeView(self.settings.size, self.mark_utils)
+        return ScreenTicTacToeView(
+            cell_width_size=self.tic_tac_toe.config.cell_width_size,
+            cell_height_size=self.tic_tac_toe.config.cell_height_size,
+            dim=self.settings.dim,
+            size=self.settings.size,
+            mark_utils=self.mark_utils
+        )
 
     def before_run(self):
         pygame.init()
@@ -57,12 +63,7 @@ class TicTacToeGame:
                     self.stop()
                 self.controller.handle_inputs(self.dt)
                 self.controller.handle_events()
-                self.view.render(
-                    self.tic_tac_toe.config.cell_width_size,
-                    self.tic_tac_toe.config.cell_height_size,
-                    self.settings.dim,
-                    self.mark_utils.decompose(self.tic_tac_toe.marks)
-                )
+                self.view.render(self.mark_utils.decompose(self.tic_tac_toe.marks))
                 self.at_each_run()
                 self.dt = self.clock.tick(self.settings.fps) / 1000
         finally:

@@ -11,15 +11,22 @@ LINE_WIDTH = 2
 CIRCLE_RADIUS = 60
 
 class TicTacToeView:
+    def __init__(self, cell_width_size: float, cell_height_size: float, dim: int):
+        self.cell_width_size = cell_width_size
+        self.cell_height_size = cell_height_size
+        self.dim = dim
+        pass
+
     def render(self):
         raise NotImplemented
 
-class ShowNothingTicTacToeView:
+class ShowNothingTicTacToeView(TicTacToeView):
     def render(self):
         pass
 
 class ScreenTicTacToeView(TicTacToeView):
-    def __init__(self, size, mark_utils: MarkUtils, screen: Surface = None):
+    def __init__(self, cell_width_size: float, cell_height_size: float, dim: int, size, mark_utils: MarkUtils, screen: Surface = None):
+        super().__init__(cell_width_size, cell_height_size, dim)
         self._screen = screen or pygame.display.set_mode(size)
         self._mark_utils = mark_utils
 
@@ -30,16 +37,16 @@ class ScreenTicTacToeView(TicTacToeView):
         function = getattr(draw, name)
         return lambda *args, **kwargs: function(self._screen, *args, **kwargs)
 
-    def render(self, cell_width_size, cell_height_size, dim, marks):
+    def render(self, marks):
         self._screen.fill(SCREEN_BACKGROUND_COLOR)
-        self.render_grid(cell_width_size, cell_height_size, dim)
+        self.render_grid()
         for mark in marks:
             self.render_mark(mark)
 
-    def render_grid(self, cell_width_size, cell_height_size, dim):
-        for d in range(1, dim):
-            x = d * cell_width_size
-            y = d * cell_height_size
+    def render_grid(self):
+        for d in range(1, self.dim):
+            x = d * self.cell_width_size
+            y = d * self.cell_height_size
             self.draw_line(GAME_OBJECT_COLOR, (x, 0), (x, self._screen.get_height()), width=GRID_LINE_WIDTH)
             self.draw_line(GAME_OBJECT_COLOR, (0, y), (self._screen.get_width(), y), width=GRID_LINE_WIDTH)
 

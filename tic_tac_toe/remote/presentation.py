@@ -1,7 +1,7 @@
 from pygame.event import Event
 from tic_tac_toe.model.grid import *
 from tic_tac_toe.model.game_object import *
-from tic_tac_toe.model.game import *
+from tic_tac_toe.model import *
 from tic_tac_toe.controller import ControlEvent
 from tic_tac_toe.utils import Config
 import json
@@ -56,16 +56,16 @@ class Serializer:
         return obj
 
     def _serialize_gameobject(self, obj: GameObject):
-        return self._to_dict(obj, "position", "size", "name")
+        return self._to_dict(obj, "size", "position", "name")
 
     def _serialize_cell(self, cell: Cell):
         return self._to_dict(cell, "x", "y")
 
     def _serialize_symbol(self, symbol: Symbol):
         return self._to_dict(symbol, "name")
-    
+
     def _serialize_mark(self, mark: Mark):
-        return self._to_dict(mark, "cell", "symbol")
+        return self._to_dict(mark, "size", "position", "name", "cell", "symbol")
     
     def _serialize_grid(self, grid: Grid):
         return self._to_dict(grid, "dim", "cells")
@@ -120,9 +120,9 @@ class Deserializer:
 
     def _deserialize_symbol(self, obj) -> Symbol:
         return Symbol[obj["name"]]
-    
+
     def _deserialize_mark(self, obj) -> Mark:
-        return Mark(*self._from_dict(obj, "cell", "symbol"))
+        return Mark(*self._from_dict(obj, "cell", "symbol", "size", "position", "name"))
     
     def _deserialize_grid(self, obj) -> Grid:
         return Grid(*self._from_dict(obj, "dim"))

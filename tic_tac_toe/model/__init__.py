@@ -45,7 +45,7 @@ class TicTacToe(Sized):
     def marks(self, marks) -> list[Mark]:
         self._marks = []
         for mark in marks:
-            assert isinstance(mark, Mark), f"Invalid paddle: {mark}"
+            assert isinstance(mark, Mark), f"Invalid mark: {mark}"
             self._marks.append(mark)
 
 

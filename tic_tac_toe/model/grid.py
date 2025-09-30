@@ -6,6 +6,9 @@ class Cell:
     x: int
     y: int
 
+    def __hash__(self):
+        return hash((self.x, self.y))
+
 class Grid:
     dim: int
     cells: list[Cell]

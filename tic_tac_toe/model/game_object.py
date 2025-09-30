@@ -6,33 +6,33 @@ class Sized:
 
     @property
     def width(self) -> float:
-        return self.size.x
+        return self.size.x # type: ignore[attr-defined]
 
     @property
     def height(self) -> float:
-        return self.size.y
+        return self.size.y # type: ignore[attr-defined]
 
 class Positioned:
 
     @property
     def x(self) -> float:
-        return self.position.x
+        return self.position.x # type: ignore[attr-defined]
 
     @property
     def y(self) -> float:
-        return self.position.y
+        return self.position.y # type: ignore[attr-defined]
 
 class GameObject(Sized, Positioned):
     def __init__(self, size, position=None, name=None):
-        self._size = size
+        self._size = Vector2(size)
         self._position = Vector2(position) if position is not None else Vector2()
         self.name = name or self.__class__.__name__.lower()
 
     def __eq__(self, other):
         return isinstance(other, type(self)) and \
             self.name == other.name and \
-            self._size == other._size and \
-            self._position == other._position
+            self.size == other.size and \
+            self.position == other.position
 
     def __hash__(self):
         return hash((type(self), self.name, self.size, self.position))
@@ -50,7 +50,7 @@ class GameObject(Sized, Positioned):
     @size.setter
     def size(self, value: Vector2):
         old_value = self._size
-        self._size = value
+        self._size = Vector2(value)
         if old_value is not None and old_value != self._size:
             logger.debug(f"{self} resized: {old_value} -> {self._size}")
 
@@ -61,14 +61,9 @@ class GameObject(Sized, Positioned):
     @position.setter
     def position(self, value: Vector2):
         old_value = self._position
-        self._position = value
+        self._position = Vector2(value)
         if old_value is not None and old_value != self._position:
             logger.debug(f"{self} moves: {old_value} -> {self._position}")
-
-    def override(self, other: 'GameObject'):
-        assert isinstance(other, type(self)) and other.name == self.name, f"Invalid override: {other} -> {self}"
-        self.size = other.size
-        self.position = other.position
 
 class Symbol(Enum):
     NOUGHT = "O"
@@ -91,16 +86,17 @@ class Symbol(Enum):
 
 class Mark(GameObject):
     from .grid import Cell
-    cell: Cell
-    symbol: Symbol
 
-    def __init__(self, cell: Cell, symbol: Symbol, size=None, position=None, name=None):
-        super().__init__(size, position, name or "mark_" + symbol.name)
+    def __init__(self, cell: Cell, symbol: Symbol, size=Vector2(0), position=None, name=None):
+        super().__init__(size, position, name or "mark_" + symbol.name.lower())
         self.cell = cell
         self.symbol = symbol
 
     def __eq__(self, other):
         return super().__eq__(other) and self.cell == other.cell and self.symbol == other.symbol
+
+    def __hash__(self):
+        return hash((super().__hash__(), self.cell, self.symbol))
 
     def __repr__(self):
         return super().__repr__().replace(')>', f", cell={self.cell}, symbol={self.symbol})>")

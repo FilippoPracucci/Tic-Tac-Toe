@@ -1,5 +1,5 @@
 import pygame
-from ..model.game import *
+from ..model import *
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -7,6 +7,7 @@ class ControlEvent(Enum):
     GAME_START = pygame.event.custom_type()
     GAME_OVER = pygame.QUIT
     MARK_PLACED = pygame.event.custom_type()
+    CHANGE_TURN = pygame.event.custom_type()
     TIME_ELAPSED = pygame.event.custom_type()
 
     @classmethod
@@ -54,7 +55,8 @@ class ActionMap:
     name: str = 'custom'
 
     def to_key_map(self):
-        return {getattr(self, name): PlayerAction[name.upper()] for name in self.__annotations__ if name not in ('name', 'click_point')}
+        return {getattr(self, name): PlayerAction[name.upper()]
+                for name in self.__annotations__ if name not in ('name', 'click_point')}
 
     @classmethod
     def click(cls):
@@ -107,8 +109,17 @@ class EventHandler:
                 self.on_game_over(self._tic_tac_toe)
             elif ControlEvent.MARK_PLACED.matches(event):
                 self.on_mark_placed(self._tic_tac_toe, **event.dict)
+                post_event(ControlEvent.CHANGE_TURN)
+            elif ControlEvent.CHANGE_TURN.matches(event):
+                self.on_change_turn(self._tic_tac_toe)
             elif ControlEvent.TIME_ELAPSED.matches(event):
                 self.on_time_elapsed(self._tic_tac_toe, **event.dict)
+
+    def on_player_join(self, tic_tac_toe: TicTacToe):
+        pass
+
+    def on_player_leave(self, tic_tac_toe: TicTacToe, symbol: Symbol):
+        pass
 
     def on_game_start(self, tic_tac_toe: TicTacToe):
         pass
@@ -117,6 +128,9 @@ class EventHandler:
         pass
 
     def on_mark_placed(self, tic_tac_toe: TicTacToe, cell: Cell):
+        pass
+
+    def on_change_turn(self, tic_tac_toe: TicTacToe):
         pass
 
     def on_time_elapsed(self, tic_tac_toe: TicTacToe, dt: float):

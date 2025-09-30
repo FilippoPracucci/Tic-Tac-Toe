@@ -30,17 +30,18 @@ class TicTacToeEventHandler(EventHandler):
         pass
 
     def on_mark_placed(self, tic_tac_toe, cell: Cell):
-        size = tic_tac_toe.size.x / tic_tac_toe.grid.dim
-        if tic_tac_toe.place_mark(Mark(
-            cell,
-            Symbol.NOUGHT if self._tic_tac_toe.turn.is_nought else Symbol.CROSS,
-            size,
-            tic_tac_toe.config.cells_symbol_position.get((cell.x, cell.y))
-        )):
-            if tic_tac_toe.has_won(tic_tac_toe.turn):
-                self.on_game_over(tic_tac_toe)
-            tic_tac_toe.change_turn()
-            tic_tac_toe.remove_random_mark()
+        tic_tac_toe.place_mark(Mark(
+            cell=cell,
+            symbol=self._tic_tac_toe.turn,
+            size=(tic_tac_toe.size / tic_tac_toe.grid.dim),
+            position=tic_tac_toe.config.cells_symbol_position.get((cell.x, cell.y))
+        ))
+
+    def on_change_turn(self, tic_tac_toe):
+        if tic_tac_toe.has_won(tic_tac_toe.turn):
+            self.on_game_over(tic_tac_toe)
+        tic_tac_toe.change_turn()
+        tic_tac_toe.remove_random_mark()
 
     def on_time_elapsed(self, tic_tac_toe, dt):
         tic_tac_toe.update(dt)
