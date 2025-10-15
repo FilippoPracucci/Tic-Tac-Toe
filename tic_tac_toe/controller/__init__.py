@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 class ControlEvent(Enum):
+    PLAYER_JOIN = pygame.event.custom_type()
+    PLAYER_LEAVE = pygame.event.custom_type()
     GAME_START = pygame.event.custom_type()
     GAME_OVER = pygame.QUIT
     MARK_PLACED = pygame.event.custom_type()
@@ -103,7 +105,11 @@ class EventHandler:
 
     def handle_events(self):
         for event in pygame.event.get(self.GAME_EVENTS):
-            if ControlEvent.GAME_START.matches(event):
+            if ControlEvent.PLAYER_JOIN.matches(event):
+                self.on_player_join(self._tic_tac_toe, **event.dict)
+            elif ControlEvent.PLAYER_LEAVE.matches(event):
+                self.on_player_leave(self._tic_tac_toe, **event.dict)
+            elif ControlEvent.GAME_START.matches(event):
                 self.on_game_start(self._tic_tac_toe)
             elif ControlEvent.GAME_OVER.matches(event):
                 self.on_game_over(self._tic_tac_toe)

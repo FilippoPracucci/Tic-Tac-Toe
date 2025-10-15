@@ -13,8 +13,8 @@ class TicTacToeInputHandler(InputHandler):
         for event in pygame.event.get(self.INPUT_EVENTS):
             if event.type == pygame.MOUSEBUTTONDOWN:
                 self.mouse_clicked()
-        if dt is not None:
-            self.time_elapsed(dt)
+        """ if dt is not None:
+            self.time_elapsed(dt) """
 
     def _to_cell(self, pos: Vector2) -> Cell:
         cells_area_matrix = self._tic_tac_toe.config.cells_area_matrix
@@ -23,6 +23,12 @@ class TicTacToeInputHandler(InputHandler):
         return Cell(value[0], value[1])
 
 class TicTacToeEventHandler(EventHandler):
+    def on_player_join(self, tic_tac_toe):
+        print(f"PLAYER JOIN")
+
+    def on_player_leave(self, tic_tac_toe, symbol):
+        self.on_game_over(tic_tac_toe)
+
     def on_game_start(self, tic_tac_toe):
         pass
 

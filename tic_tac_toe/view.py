@@ -17,11 +17,11 @@ class TicTacToeView:
         self.dim = dim
         pass
 
-    def render(self):
+    def render(self, marks):
         raise NotImplemented
 
 class ShowNothingTicTacToeView(TicTacToeView):
-    def render(self):
+    def render(self, marks):
         pass
 
 class ScreenTicTacToeView(TicTacToeView):

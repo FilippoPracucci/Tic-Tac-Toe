@@ -65,7 +65,7 @@ class TicTacToeGame:
                 self.controller.handle_events()
                 self.view.render(self.mark_utils.decompose(self.tic_tac_toe.marks))
                 self.at_each_run()
-                self.dt = self.clock.tick(self.settings.fps) / 1000
+                #self.dt = self.clock.tick(self.settings.fps) / 1000
         finally:
             self.after_run()
 
