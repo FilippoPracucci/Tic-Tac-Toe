@@ -93,14 +93,6 @@ class TicTacToeCoordinator(TicTacToeGame):
         for peer in self.peers:
             self.server.send(payload=event, address=peer)
 
-    def _handle_ingoing_messages(self):
-        while self.running:
-            message, sender = self.server.receive()
-            self.add_peer(sender)
-            message = deserialize(message)
-            assert isinstance(message, pygame.event.Event), f"Expected {pygame.event.Event}, got {type(message)}"
-            pygame.event.post(message)
-
     def _on_new_connection(self, event: ServerEvent, connection: TcpConnection, address: Address, error):
         match event:
             case ServerEvent.LISTEN:
@@ -109,7 +101,6 @@ class TicTacToeCoordinator(TicTacToeGame):
                 print(f"Open ingoing connection from: {address}")
                 self.add_peer(address)
                 connection.callback = self._on_message_received
-                #global remote_peer; remote_peer = connection
             case ServerEvent.STOP:
                 print(f"Stop listening for new connections")
             case ServerEvent.ERROR:
@@ -118,12 +109,16 @@ class TicTacToeCoordinator(TicTacToeGame):
     def _on_message_received(self, event: ConnectionEvent, payload, connection: TcpConnection, error):
         match event:
             case ConnectionEvent.MESSAGE:
-                connection.callback = self._handle_ingoing_messages
+                self._handle_ingoing_messages(payload)
             case ConnectionEvent.CLOSE:
                 print(f"Connection with peer {connection.remote_address} closed")
-                #global remote_peer; remote_peer = None
             case ConnectionEvent.ERROR:
                 print(error)
+
+    def _handle_ingoing_messages(self, payload):
+        message = deserialize(payload)
+        assert isinstance(message, pygame.event.Event), f"Expected {pygame.event.Event}, got {type(message)}"
+        pygame.event.post(message)
 
 
 class TicTacToeTerminal(TicTacToeGame):
@@ -131,7 +126,7 @@ class TicTacToeTerminal(TicTacToeGame):
     def __init__(self, settings: Settings = None):
         settings = settings or Settings()
         super().__init__(settings)
-        self.client = TcpClient(Address(host=self.settings.host or DEFAULT_HOST, port=self.settings.port or DEFAULT_PORT), self._handle_ingoing_messages)
+        self.client = TcpClient(Address(host=self.settings.host or DEFAULT_HOST, port=self.settings.port or DEFAULT_PORT))
         """ self._thread_receiver = threading.Thread(target=self._handle_ingoing_messages, daemon=True)
         self._thread_receiver.start() """
 
