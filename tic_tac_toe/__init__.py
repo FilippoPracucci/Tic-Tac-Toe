@@ -6,20 +6,31 @@ from .view import ShowNothingTicTacToeView
 from .controller.mark_utils import *
 
 class TicTacToeGame:
-    def __init__(self, settings: Settings=None):
+    def __init__(self, settings: Settings=None, players=[]):
         self.settings = settings or Settings()
         self.tic_tac_toe = TicTacToe(
             size=self.settings.size,
-            dim=self.settings.dim
+            dim=self.settings.dim,
+            players=players
         )
         self.dt = None
+        self._turn: Player = None
         self.mark_utils = MarkUtils()
         self.view = self.create_view() if self.settings.gui else ShowNothingTicTacToeView(self.tic_tac_toe)
         self.clock = pygame.time.Clock()
         self.running = True
         self.controller = self.create_controller()
         if self.settings.debug:
-            logger.setLevel(logging.DEBUG)
+            logger.setLevel(logging.INFO)
+
+    @property
+    def turn(self) -> Player:
+        return self._turn
+    
+    @turn.setter
+    def turn(self, player: Player) -> Player:
+        assert isinstance(player, Player), f"Invalid symbol for a player: {player.symbol}"
+        self._turn = player
 
     def create_controller(game):
         from .controller.local import TicTacToeLocalController
@@ -28,8 +39,20 @@ class TicTacToeGame:
             def __init__(self):
                 super().__init__(game.tic_tac_toe)
 
-            def on_game_over(this, _):
-                print(f"Player '{game.tic_tac_toe.turn.value}' has won!")
+            def on_player_join(this, _):
+                if not game.turn:
+                    game.turn = game.tic_tac_toe.get_turn_player()
+                super().on_player_join(game.tic_tac_toe)
+
+            def on_change_turn(this, _):
+                game.turn = game.tic_tac_toe.get_turn_player()
+                super().on_change_turn(game.tic_tac_toe)
+
+            def on_game_over(this, _, player: Player):
+                if not player:
+                    print("Game ended because a player left")
+                else:
+                    print(f"Player '{player.symbol.value}' has won!")
                 game.stop()
 
         return Controller()
@@ -53,8 +76,6 @@ class TicTacToeGame:
             self.dt = 0
             self.before_run()
             while self.running:
-                if self.tic_tac_toe.has_won(self.tic_tac_toe.turn):
-                    self.stop()
                 self.controller.handle_inputs(self.dt)
                 self.controller.handle_events()
                 self.view.render()
@@ -70,4 +91,5 @@ class TicTacToeGame:
 def main(settings = None):
     if settings is None:
         settings = Settings()
-    TicTacToeGame(settings).run()
+    players = [Player(symbol) for symbol in Symbol.values()]
+    TicTacToeGame(settings, players).run()

@@ -32,13 +32,13 @@ class TicTacToeEventHandler(EventHandler):
             symbol = Symbol.NOUGHT
         tic_tac_toe.add_player(Player(symbol))
 
-    def on_player_leave(self, tic_tac_toe: TicTacToe, symbol: Symbol):
-        self.on_game_over(tic_tac_toe)
+    def on_player_leave(self, tic_tac_toe: TicTacToe, player: Player):
+        self.on_game_over(tic_tac_toe, player=None)
 
     def on_game_start(self, tic_tac_toe: TicTacToe):
         pass
 
-    def on_game_over(self, tic_tac_toe: TicTacToe):
+    def on_game_over(self, tic_tac_toe: TicTacToe, player: Player):
         pass
 
     def on_mark_placed(self, tic_tac_toe, cell: Cell):
@@ -48,8 +48,15 @@ class TicTacToeEventHandler(EventHandler):
             size=(tic_tac_toe.size / tic_tac_toe.grid.dim),
             position=tic_tac_toe.config.cells_symbol_position.get((cell.x, cell.y))
         ))
-        if tic_tac_toe.end_turn():
-            self.on_game_over(tic_tac_toe)
+        winner = tic_tac_toe.check_game_end()
+        if winner:
+            self.on_game_over(tic_tac_toe, winner)
+        else:
+            post_event(ControlEvent.CHANGE_TURN)
+
+    def on_change_turn(self, tic_tac_toe: TicTacToe):
+        tic_tac_toe.change_turn()
+        tic_tac_toe.remove_random_mark()
 
     def on_time_elapsed(self, tic_tac_toe, dt):
         tic_tac_toe.update(dt)

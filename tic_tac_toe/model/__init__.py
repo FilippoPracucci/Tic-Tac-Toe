@@ -4,10 +4,10 @@ from .game_object import *
 from ..utils import *
 
 class TicTacToe(Sized):
-    def __init__(self, size, dim=Settings.dim):
+    def __init__(self, size, dim=Settings.dim, players=[]):
         self.size = Vector2(size)
         self.config = Config(self.size.x/dim, self.size.y/dim)
-        self.players = []
+        self.players = players
         self.grid = Grid(dim) if dim is not None else Grid()
         self.marks = list()
         self.turn: Symbol = Symbol.CROSS
@@ -114,24 +114,24 @@ class TicTacToe(Sized):
 
     def get_crosses(self) -> list[Mark]:
         return list(filter(lambda m: m.symbol is Symbol.CROSS, self.marks))
-    
-    def end_turn(self) -> bool:
-        if self.has_won(self.turn):
-            return True
-        self.change_turn()
-        self.remove_random_mark()
 
-    def has_won(self, player: Symbol) -> bool:
-        cells_marked = list(map(lambda m: m.cell, self.get_noughts() if player.is_nought else self.get_crosses()))
-        for row in self._get_rows():
-            if len(cells_marked).__ge__(self.grid.dim) and all(list(map(lambda cell: cell in cells_marked, row))):
-                return True
-        for col in self._get_columns():
-            if len(cells_marked).__ge__(self.grid.dim) and all(list(map(lambda cell: cell in cells_marked, col))):
-                return True
-        return len(cells_marked).__ge__(self.grid.dim) and \
-            (all(list(map(lambda cell: cell in cells_marked, self._get_diagonal()))) or \
-             all(list(map(lambda cell: cell in cells_marked, self._get_antidiagonal()))))
+    def check_game_end(self) -> Player:
+        def has_won(player: Player) -> bool:
+            cells_marked = list(map(lambda m: m.cell, self.get_noughts() if player.symbol.is_nought else self.get_crosses()))
+            for row in self._get_rows():
+                if len(cells_marked).__ge__(self.grid.dim) and all(list(map(lambda cell: cell in cells_marked, row))):
+                    return True
+            for col in self._get_columns():
+                if len(cells_marked).__ge__(self.grid.dim) and all(list(map(lambda cell: cell in cells_marked, col))):
+                    return True
+            return len(cells_marked).__ge__(self.grid.dim) and \
+                (all(list(map(lambda cell: cell in cells_marked, self._get_diagonal()))) or \
+                all(list(map(lambda cell: cell in cells_marked, self._get_antidiagonal()))))
+
+        for player in self.players:
+            if has_won(player):
+                return player
+        return None
 
     def reset_grid(self):
         self.marks = list()
@@ -141,6 +141,9 @@ class TicTacToe(Sized):
         self.updates += 1
         self.time += delta_time
         logger.debug(f"Update {self.updates} (time: {self.time})")
+
+    def get_turn_player(self) -> Player:
+        return list(filter(lambda p: p.symbol == self.turn, self.players))[0]
 
     def change_turn(self):
         self.turn = Symbol.CROSS if self.turn.is_nought else Symbol.NOUGHT

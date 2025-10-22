@@ -5,8 +5,7 @@ from tic_tac_toe import TicTacToeGame
 from tic_tac_toe.remote import *
 from tic_tac_toe.utils import Settings
 from tic_tac_toe.model import TicTacToe
-from tic_tac_toe.model.game_object import Symbol, Mark
-from tic_tac_toe.model.grid import Cell
+from tic_tac_toe.model.game_object import Player
 from tic_tac_toe.controller import ControlEvent
 from tic_tac_toe.remote.tcp import TcpClient, TcpConnection, TcpServer, Address
 from tic_tac_toe.remote.presentation import serialize, deserialize
@@ -47,10 +46,10 @@ class TicTacToeCoordinator(TicTacToeGame):
             def on_player_join(self, tic_tac_toe: TicTacToe):
                 super().on_player_join(tic_tac_toe)
 
-            def on_player_leave(self, tic_tac_toe: TicTacToe, symbol: Symbol):
-                self.on_game_over()
+            def on_player_leave(self, tic_tac_toe: TicTacToe, player: Player):
+                self.on_game_over(tic_tac_toe, player=player)
 
-            def on_game_over(self, tic_tac_toe: TicTacToe):
+            def on_game_over(self, tic_tac_toe: TicTacToe, player: Player):
                 coordinator.stop()
 
             def handle_inputs(self, dt=None):
@@ -158,12 +157,12 @@ class TicTacToeTerminal(TicTacToeGame):
                     tic_tac_toe.change_turn()
                     tic_tac_toe.remove_random_mark() """
 
-            """ def on_change_turn(self, tic_tac_toe):
+            """def on_change_turn(self, tic_tac_toe: TicTacToe):
                 if tic_tac_toe.has_won(tic_tac_toe.turn):
                     #self.on_game_over(tic_tac_toe)
                     self.post_event(ControlEvent.GAME_OVER)
                 tic_tac_toe.change_turn()
-                tic_tac_toe.remove_random_mark() """
+                tic_tac_toe.remove_random_mark()"""
 
             def on_time_elapsed(self, tic_tac_toe: TicTacToe, dt: float, status: TicTacToe=None): # type: ignore[override]
                 if not status:
@@ -171,7 +170,7 @@ class TicTacToeTerminal(TicTacToeGame):
                 else:
                     tic_tac_toe.override(status)
 
-            def on_player_leave(self, tic_tac_toe: TicTacToe, symbol: Symbol):
+            def on_player_leave(self, tic_tac_toe: TicTacToe, player: Player):
                 terminal.stop()
         
         return Controller(terminal.tic_tac_toe)
