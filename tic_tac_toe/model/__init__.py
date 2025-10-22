@@ -114,6 +114,12 @@ class TicTacToe(Sized):
 
     def get_crosses(self) -> list[Mark]:
         return list(filter(lambda m: m.symbol is Symbol.CROSS, self.marks))
+    
+    def end_turn(self) -> bool:
+        if self.has_won(self.turn):
+            return True
+        self.change_turn()
+        self.remove_random_mark()
 
     def has_won(self, player: Symbol) -> bool:
         cells_marked = list(map(lambda m: m.cell, self.get_noughts() if player.is_nought else self.get_crosses()))

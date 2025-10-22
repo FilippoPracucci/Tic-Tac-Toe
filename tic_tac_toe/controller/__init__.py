@@ -9,7 +9,6 @@ class ControlEvent(Enum):
     GAME_START = pygame.event.custom_type()
     GAME_OVER = pygame.QUIT
     MARK_PLACED = pygame.event.custom_type()
-    CHANGE_TURN = pygame.event.custom_type()
     TIME_ELAPSED = pygame.event.custom_type()
 
     @classmethod
@@ -115,9 +114,6 @@ class EventHandler:
                 self.on_game_over(self._tic_tac_toe)
             elif ControlEvent.MARK_PLACED.matches(event):
                 self.on_mark_placed(self._tic_tac_toe, **event.dict)
-                post_event(ControlEvent.CHANGE_TURN)
-            elif ControlEvent.CHANGE_TURN.matches(event):
-                self.on_change_turn(self._tic_tac_toe)
             elif ControlEvent.TIME_ELAPSED.matches(event):
                 self.on_time_elapsed(self._tic_tac_toe, **event.dict)
 
@@ -134,9 +130,6 @@ class EventHandler:
         pass
 
     def on_mark_placed(self, tic_tac_toe: TicTacToe, cell: Cell):
-        pass
-
-    def on_change_turn(self, tic_tac_toe: TicTacToe):
         pass
 
     def on_time_elapsed(self, tic_tac_toe: TicTacToe, dt: float):

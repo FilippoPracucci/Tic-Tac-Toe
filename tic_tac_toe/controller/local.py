@@ -48,12 +48,8 @@ class TicTacToeEventHandler(EventHandler):
             size=(tic_tac_toe.size / tic_tac_toe.grid.dim),
             position=tic_tac_toe.config.cells_symbol_position.get((cell.x, cell.y))
         ))
-
-    def on_change_turn(self, tic_tac_toe: TicTacToe):
-        if tic_tac_toe.has_won(tic_tac_toe.turn):
+        if tic_tac_toe.end_turn():
             self.on_game_over(tic_tac_toe)
-        tic_tac_toe.change_turn()
-        tic_tac_toe.remove_random_mark()
 
     def on_time_elapsed(self, tic_tac_toe, dt):
         tic_tac_toe.update(dt)
