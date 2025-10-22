@@ -7,6 +7,7 @@ class TicTacToe(Sized):
     def __init__(self, size, dim=Settings.dim):
         self.size = Vector2(size)
         self.config = Config(self.size.x/dim, self.size.y/dim)
+        self.players = []
         self.grid = Grid(dim) if dim is not None else Grid()
         self.marks = list()
         self.turn: Symbol = Symbol.CROSS
@@ -18,13 +19,14 @@ class TicTacToe(Sized):
             self.size == value.size and \
             self.config == value.config and \
             self.grid == value.grid and \
+            self.players == value.players and \
             self.marks == value.marks and \
             self.turn == value.turn and \
             self.updates == value.updates and \
             self.time == value.time
 
     def __hash__(self):
-        return hash((self.size, self.config, self.grid, tuple(self.marks), self.turn, self.updates, self.time))
+        return hash((self.size, self.config, self.grid, tuple(self.players), tuple(self.marks), self.turn, self.updates, self.time))
 
     def __repr__(self):
         return (f'<{type(self).__name__}('
@@ -33,9 +35,38 @@ class TicTacToe(Sized):
                 f'time={self.time}, '
                 f'updates={self.updates}, '
                 f'config={self.config}, '
+                f'players={self.players}, '
                 f'marks={self.marks}, '
                 f'turn={repr(self.turn)}'
                 f')>')
+
+    @property
+    def players(self) -> list[Player]:
+        return list(self._players)
+    
+    @players.setter
+    def players(self, players: list[Player]) -> list[Player]:
+        self._players = []
+        for player in players:
+            assert isinstance(player, Player), f"Invalid symbol for a player: {player.symbol}"
+            self._players.append(player)
+
+    def add_player(self, player: Player):
+        logger.debug(f"Add player {player}")
+        assert isinstance(player, Player), "The player provided has not a valid symbol"
+        #assert list(filter(lambda p: p == player, self.players)).__len__() == 0
+        self._players.append(player)
+
+    def player(self, player: Player):
+        if player not in self._players:
+            raise ValueError(f"No such a player: {player.symbol}")
+        return list(filter(lambda p: p == player, self._players))[0]
+
+    def remove_player(self, symbol: Symbol):
+        if list(filter(lambda p: p.symbol == symbol, self._players)).__len__() == 0:
+            raise ValueError(f"No such player with symbol {symbol}")
+        self.players = list(filter(lambda p: p.symbol != symbol, self._players))
+        logger.debug(f"Removed player from {self} with symbol {symbol}")
 
     @property
     def marks(self) -> list[Mark]:
@@ -107,6 +138,32 @@ class TicTacToe(Sized):
 
     def change_turn(self):
         self.turn = Symbol.CROSS if self.turn.is_nought else Symbol.NOUGHT
+
+    def override(self, other: 'TicTacToe'):
+        logger.debug(f"Overriding TicTacToe status")
+        if self is other:
+            return
+        self.marks = other.marks
+        """ self.size = other.size
+        self.config = other.config
+        self.updates = other.updates
+        self.time = other.time
+        my_marks = set((mark.cell for mark in self.marks))
+        other_marks = set((mark.cell for mark in other.marks))
+        added = other_marks - my_marks
+        added = {m: other._marks[m] for m in added}
+        removed = my_marks - other_marks
+        removed = {m: self._marks[m] for m in removed}
+        common = my_marks & other_marks
+        common = {m: other._marks[m] for m in common}
+        for _, mark in added.items():
+            self.place_mark(mark)
+        for cell, _ in removed.items():
+            self.remove_mark(cell)
+        for cell, mark in common.items():
+            self.get_mark(cell).override(other.get_mark(cell))
+        print(f"ADDED: {added} - REMOVED: {removed}")
+        return added, removed """
 
     def _get_diagonal(self) -> list[Cell]:
         return list(filter(lambda c: c.x == c.y, self.grid.cells))

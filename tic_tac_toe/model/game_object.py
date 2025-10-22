@@ -1,6 +1,7 @@
 from pygame.math import Vector2
 from enum import Enum
 from ..log import logger
+from dataclasses import dataclass
 
 class Sized:
 
@@ -65,6 +66,11 @@ class GameObject(Sized, Positioned):
         if old_value is not None and old_value != self._position:
             logger.debug(f"{self} moves: {old_value} -> {self._position}")
 
+    def override(self, other: 'GameObject'):
+        assert isinstance(other, type(self)) and other.name == self.name, f"Invalid override: {other} -> {self}"
+        self.size = other.size
+        self.position = other.position
+
 class Symbol(Enum):
     NOUGHT = "O"
     CROSS = "X"
@@ -84,6 +90,13 @@ class Symbol(Enum):
     def values(cls) -> list['Symbol']:
         return list(cls.__members__.values())
 
+@dataclass
+class Player:
+    symbol: Symbol
+
+    def __hash__(self):
+        return hash((self.symbol))
+
 class Mark(GameObject):
     from .grid import Cell
 
@@ -100,3 +113,12 @@ class Mark(GameObject):
 
     def __repr__(self):
         return super().__repr__().replace(')>', f", cell={self.cell}, symbol={self.symbol})>")
+
+    @property
+    def is_nought(self) -> bool:
+        return self.symbol == Symbol.NOUGHT
+
+    def override(self, other: GameObject):
+        super().override(other)
+        self.cell = other.cell # type: ignore[attr-defined]
+        self.symbol = other.symbol # type: ignore[attr-defined]

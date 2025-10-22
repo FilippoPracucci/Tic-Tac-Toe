@@ -64,6 +64,9 @@ class Serializer:
     def _serialize_symbol(self, symbol: Symbol):
         return self._to_dict(symbol, "name")
 
+    def _serialize_player(self, player: Player):
+        return self._to_dict(player, "symbol")
+
     def _serialize_mark(self, mark: Mark):
         return self._to_dict(mark, "size", "position", "name", "cell", "symbol")
     
@@ -77,7 +80,7 @@ class Serializer:
         return self._to_dict(config, 'cell_width_size', 'cell_height_size')
 
     def _serialize_tictactoe(self, tic_tac_toe: TicTacToe):
-        return self._to_dict(tic_tac_toe, 'marks', 'grid', 'turn', 'config', 'size', 'time', 'updates')
+        return self._to_dict(tic_tac_toe, 'players', 'marks', 'grid', 'turn', 'config', 'size', 'time', 'updates')
 
 class Deserializer:
     def deserialize(self, input: str):
@@ -121,6 +124,9 @@ class Deserializer:
     def _deserialize_symbol(self, obj) -> Symbol:
         return Symbol[obj["name"]]
 
+    def _deserialize_player(self, obj) -> Player:
+        return Player(*self._from_dict(obj, "symbol"))
+
     def _deserialize_mark(self, obj) -> Mark:
         return Mark(*self._from_dict(obj, "cell", "symbol", "size", "position", "name"))
     
@@ -132,6 +138,7 @@ class Deserializer:
 
     def _deserialize_tictactoe(self, obj) -> TicTacToe:
         tic_tac_toe = TicTacToe(*self._from_dict(obj, 'size'))
+        tic_tac_toe.players = self._deserialize(obj['players'])
         tic_tac_toe.marks = self._deserialize(obj['marks'])
         tic_tac_toe.turn = self._deserialize(obj['turn'])
         tic_tac_toe.grid = self._deserialize(obj['grid'])

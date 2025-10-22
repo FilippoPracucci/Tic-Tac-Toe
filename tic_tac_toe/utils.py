@@ -4,7 +4,7 @@ from statistics import mean
 
 @dataclass
 class Settings:
-    debug: bool = False
+    debug: bool = True
     size: tuple = (600, 600)
     fps: int = 60
     host: Optional[str] = None

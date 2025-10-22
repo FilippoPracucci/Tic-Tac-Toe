@@ -13,8 +13,10 @@ class TicTacToeInputHandler(InputHandler):
         for event in pygame.event.get(self.INPUT_EVENTS):
             if event.type == pygame.MOUSEBUTTONDOWN:
                 self.mouse_clicked()
-        """ if dt is not None:
-            self.time_elapsed(dt) """
+            elif event.type in [pygame.KEYDOWN, pygame.KEYUP]:
+                self.post_event(ControlEvent.PLAYER_LEAVE)
+        if dt is not None:
+            self.time_elapsed(dt)
 
     def _to_cell(self, pos: Vector2) -> Cell:
         cells_area_matrix = self._tic_tac_toe.config.cells_area_matrix
@@ -23,16 +25,20 @@ class TicTacToeInputHandler(InputHandler):
         return Cell(value[0], value[1])
 
 class TicTacToeEventHandler(EventHandler):
-    def on_player_join(self, tic_tac_toe):
-        print(f"PLAYER JOIN")
+    def on_player_join(self, tic_tac_toe: TicTacToe):
+        if len(list(filter(lambda s: s == Symbol.CROSS, map(lambda p: p.symbol, tic_tac_toe.players)))) == 0:
+            symbol = Symbol.CROSS
+        else:
+            symbol = Symbol.NOUGHT
+        tic_tac_toe.add_player(Player(symbol))
 
-    def on_player_leave(self, tic_tac_toe, symbol):
+    def on_player_leave(self, tic_tac_toe: TicTacToe, symbol: Symbol):
         self.on_game_over(tic_tac_toe)
 
-    def on_game_start(self, tic_tac_toe):
+    def on_game_start(self, tic_tac_toe: TicTacToe):
         pass
 
-    def on_game_over(self, tic_tac_toe):
+    def on_game_over(self, tic_tac_toe: TicTacToe):
         pass
 
     def on_mark_placed(self, tic_tac_toe, cell: Cell):
@@ -43,7 +49,7 @@ class TicTacToeEventHandler(EventHandler):
             position=tic_tac_toe.config.cells_symbol_position.get((cell.x, cell.y))
         ))
 
-    def on_change_turn(self, tic_tac_toe):
+    def on_change_turn(self, tic_tac_toe: TicTacToe):
         if tic_tac_toe.has_won(tic_tac_toe.turn):
             self.on_game_over(tic_tac_toe)
         tic_tac_toe.change_turn()

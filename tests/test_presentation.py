@@ -1,8 +1,7 @@
 import unittest
 
-import pygame
 from tic_tac_toe import TicTacToe
-from tic_tac_toe.model.game_object import Mark, Symbol
+from tic_tac_toe.model.game_object import Mark, Symbol, Player
 from tic_tac_toe.model.grid import Cell
 import tic_tac_toe.remote.presentation as presentation
 from pygame.event import Event
@@ -14,6 +13,7 @@ DIR_CURRENT = pathlib.Path(__file__).parent
 class TestPresentation(unittest.TestCase):
     def setUp(self):
         tic_tac_toe = TicTacToe(size=(600, 600))
+        tic_tac_toe.players = [Player(Symbol.CROSS), Player(Symbol.NOUGHT)]
         tic_tac_toe.place_mark(Mark(
             cell=Cell(0, 1),
             symbol=Symbol.CROSS,
