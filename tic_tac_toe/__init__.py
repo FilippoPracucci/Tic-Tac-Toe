@@ -48,11 +48,8 @@ class TicTacToeGame:
                 game.turn = game.tic_tac_toe.get_turn_player()
                 super().on_change_turn(game.tic_tac_toe)
 
-            def on_game_over(this, _, player: Player):
-                if not player:
-                    print("Game ended because a player left")
-                else:
-                    print(f"Player '{player.symbol.value}' has won!")
+            def on_game_over(this, tic_tac_toe: TicTacToe, player: Player):
+                super().on_game_over(tic_tac_toe, player)
                 game.stop()
 
         return Controller()

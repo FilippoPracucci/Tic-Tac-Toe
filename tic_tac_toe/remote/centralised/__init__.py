@@ -47,9 +47,10 @@ class TicTacToeCoordinator(TicTacToeGame):
                 super().on_player_join(tic_tac_toe)
 
             def on_player_leave(self, tic_tac_toe: TicTacToe, player: Player):
-                self.on_game_over(tic_tac_toe, player=player)
+                self.on_game_over(tic_tac_toe, player=None)
 
             def on_game_over(self, tic_tac_toe: TicTacToe, player: Player):
+                super().on_game_over(tic_tac_toe, player)
                 coordinator.stop()
 
             def handle_inputs(self, dt=None):
@@ -172,16 +173,26 @@ class TicTacToeTerminal(TicTacToeGame):
 
             def on_player_leave(self, tic_tac_toe: TicTacToe, player: Player):
                 terminal.stop()
-        
+
+            def on_game_over(self, tic_tac_toe, player):
+                if player:
+                    print(f"Player '{player.symbol.value}' has won!")
+                else:
+                    print("Game ended")
+                terminal.stop()
+
         return Controller(terminal.tic_tac_toe)
 
     def _handle_ingoing_messages(self):
         if self.running:
-            message = self.client.receive()
-            if message:
+            try:
+                message = self.client.receive()
                 message = deserialize(message)
                 assert isinstance(message, pygame.event.Event), f"Expected {pygame.event.Event}, got {type(message)}"
                 pygame.event.post(message)
+            except ConnectionResetError:
+                print(f"Coordinator stopped.")
+                self.controller.on_game_over(self.tic_tac_toe, None)
 
     def before_run(self):
         super().before_run()
