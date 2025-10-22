@@ -1,8 +1,7 @@
 import pygame
 
 from pygame import draw, Surface
-from .utils import *
-from .controller.mark_utils import *
+from tic_tac_toe.model import TicTacToe, Symbol, Mark
 
 SCREEN_BACKGROUND_COLOR = "black"
 GAME_OBJECT_COLOR = "white"
@@ -11,24 +10,20 @@ LINE_WIDTH = 2
 CIRCLE_RADIUS = 60
 
 class TicTacToeView:
-    def __init__(self, cell_width_size: float, cell_height_size: float, dim: int):
-        self.cell_width_size = cell_width_size
-        self.cell_height_size = cell_height_size
-        self.dim = dim
-        pass
+    def __init__(self, tic_tac_toe: TicTacToe):
+        self._tic_tac_toe = tic_tac_toe
 
-    def render(self, marks):
+    def render(self):
         raise NotImplemented
 
 class ShowNothingTicTacToeView(TicTacToeView):
-    def render(self, marks):
+    def render(self):
         pass
 
 class ScreenTicTacToeView(TicTacToeView):
-    def __init__(self, cell_width_size: float, cell_height_size: float, dim: int, size, mark_utils: MarkUtils, screen: Surface = None):
-        super().__init__(cell_width_size, cell_height_size, dim)
-        self._screen = screen or pygame.display.set_mode(size)
-        self._mark_utils = mark_utils
+    def __init__(self, tic_tac_toe: TicTacToe, screen: Surface=None):
+        super().__init__(tic_tac_toe)
+        self._screen = screen or pygame.display.set_mode(tic_tac_toe.size)
 
     def __getattr__(self, name):
         if not name.startswith("draw_"):
@@ -37,30 +32,27 @@ class ScreenTicTacToeView(TicTacToeView):
         function = getattr(draw, name)
         return lambda *args, **kwargs: function(self._screen, *args, **kwargs)
 
-    def render(self, marks):
+    def render(self):
         self._screen.fill(SCREEN_BACKGROUND_COLOR)
         self.render_grid()
-        for mark in marks:
+        for mark in self._tic_tac_toe.marks:
             self.render_mark(mark)
 
     def render_grid(self):
-        for d in range(1, self.dim):
-            x = d * self.cell_width_size
-            y = d * self.cell_height_size
+        for d in range(1, self._tic_tac_toe.grid.dim):
+            x = d * self._tic_tac_toe.config.cell_width_size
+            y = d * self._tic_tac_toe.config.cell_height_size
             self.draw_line(GAME_OBJECT_COLOR, (x, 0), (x, self._screen.get_height()), width=GRID_LINE_WIDTH)
             self.draw_line(GAME_OBJECT_COLOR, (0, y), (self._screen.get_width(), y), width=GRID_LINE_WIDTH)
 
-    def render_mark(self, mark: MarkView):
-        assert mark.symbol in self._mark_utils.symbols.values(), f"Error! Passed a mark with a not valid ({mark.symbol})."
-        if mark.is_nought:
-            self._render_nought(mark)
-        else:
-            self._render_cross(mark)
+    def render_mark(self, mark: Mark):
+        assert mark.symbol in Symbol.values(), f"Error! Passed a mark with a not valid ({mark.symbol})."
+        self._render_nought(mark) if mark.is_nought else self._render_cross(mark)
 
-    def _render_nought(self, mark: MarkView):
+    def _render_nought(self, mark: Mark):
         self.draw_circle(GAME_OBJECT_COLOR, (mark.position), radius=CIRCLE_RADIUS, width=LINE_WIDTH)
 
-    def _render_cross(self, mark: MarkView):
+    def _render_cross(self, mark: Mark):
         (x, y) = mark.position
         self._draw_line(x, y, inverted=False)
         self._draw_line(x, y, inverted=True)

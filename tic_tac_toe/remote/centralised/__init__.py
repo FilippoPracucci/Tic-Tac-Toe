@@ -1,5 +1,6 @@
 from pygame.event import Event
 import pygame
+from tic_tac_toe.log import logger
 from tic_tac_toe import TicTacToeGame
 from tic_tac_toe.remote import *
 from tic_tac_toe.utils import Settings
@@ -22,8 +23,6 @@ class TicTacToeCoordinator(TicTacToeGame):
         settings = settings or Settings()
         super().__init__(settings)
         self.server = TcpServer(self.settings.port or DEFAULT_PORT, self._on_new_connection)
-        """ self._thread_receiver = threading.Thread(target=__handle_incoming_connections, daemon=True)
-        self._thread_receiver.start() """
         self._peers: set[Address] = set()
         self._lock = threading.RLock()
 
@@ -32,16 +31,11 @@ class TicTacToeCoordinator(TicTacToeGame):
         from tic_tac_toe.controller.local import ControlEvent
 
         class SendToPeersTicTacToeView(ShowNothingTicTacToeView):
-            def render(self, marks):
-                pass
-                """ event = coordinator.controller.create_event(ControlEvent.TIME_ELAPSED, dt=coordinator.dt, status=self._tic_tac_toe) # removed status=self._pong (taken from PongView)
-                coordinator._broadcast_to_all_peers(event) """
+            def render(self):
+                event = coordinator.controller.create_event(ControlEvent.TIME_ELAPSED, dt=coordinator.dt, status=self._tic_tac_toe)
+                coordinator._broadcast_to_all_peers(event)
 
-        return SendToPeersTicTacToeView(
-            coordinator.tic_tac_toe.config.cell_width_size,
-            coordinator.tic_tac_toe.config.cell_height_size,
-            coordinator.tic_tac_toe.grid.dim
-        )
+        return SendToPeersTicTacToeView(coordinator.tic_tac_toe)
 
     def create_controller(coordinator):
         from tic_tac_toe.controller.local import TicTacToeEventHandler, InputHandler
@@ -54,12 +48,9 @@ class TicTacToeCoordinator(TicTacToeGame):
                 super().on_player_join(tic_tac_toe)
 
             def on_player_leave(self, tic_tac_toe: TicTacToe, symbol: Symbol):
-                """ for mark in filter(lambda m: m.symbol == symbol, tic_tac_toe.marks):
-                    tic_tac_toe.remove_mark(mark.cell) """
                 self.on_game_over()
-                #self.post_event(ControlEvent.GAME_OVER)
 
-            def on_game_over(self):
+            def on_game_over(self, tic_tac_toe: TicTacToe):
                 coordinator.stop()
 
             def handle_inputs(self, dt=None):
@@ -91,35 +82,33 @@ class TicTacToeCoordinator(TicTacToeGame):
     def _broadcast_to_all_peers(self, message):
         event = serialize(message)
         for peer in self.peers:
-            self.server.send(payload=event, address=peer)
+                self.server.connections[peer].send(event)
 
     def _on_new_connection(self, event: ServerEvent, connection: TcpConnection, address: Address, error):
         match event:
             case ServerEvent.LISTEN:
-                print(f"Server listening on port {address.port} at {address.ip}")
+                logger.info(f"Server listening on port {address.port} at {address.ip}")
             case ServerEvent.CONNECT:
-                print(f"Open ingoing connection from: {address}")
+                logger.info(f"Open ingoing connection from: {address}")
                 self.add_peer(address)
                 connection.callback = self._on_message_received
             case ServerEvent.STOP:
-                print(f"Stop listening for new connections")
+                logger.info(f"Stop listening for new connections")
             case ServerEvent.ERROR:
-                print(error)
+                logger.error(error)
 
     def _on_message_received(self, event: ConnectionEvent, payload, connection: TcpConnection, error):
         match event:
             case ConnectionEvent.MESSAGE:
-                self._handle_ingoing_messages(payload)
+                if payload:
+                    payload = deserialize(payload)
+                    assert isinstance(payload, pygame.event.Event), f"Expected {pygame.event.Event}, got {type(payload)}"
+                    pygame.event.post(payload)
+                    self._broadcast_to_all_peers(payload)
             case ConnectionEvent.CLOSE:
-                print(f"Connection with peer {connection.remote_address} closed")
+                logger.info(f"Connection with peer {connection.remote_address} closed")
             case ConnectionEvent.ERROR:
-                print(error)
-
-    def _handle_ingoing_messages(self, payload):
-        message = deserialize(payload)
-        assert isinstance(message, pygame.event.Event), f"Expected {pygame.event.Event}, got {type(message)}"
-        pygame.event.post(message)
-
+                logger.error(error)
 
 class TicTacToeTerminal(TicTacToeGame):
 
@@ -143,19 +132,22 @@ class TicTacToeTerminal(TicTacToeGame):
                 return event
 
             def handle_inputs(self, dt=None):
-                return super().handle_inputs(dt)
+                return super().handle_inputs(dt=None)
 
             def handle_events(self):
-                return super().handle_events()
+                terminal._handle_ingoing_messages()
+                super().handle_events()
+                # return super().handle_events()
 
-            def on_mark_placed(self, tic_tac_toe: TicTacToe, cell: Cell):
+            """ def on_mark_placed(self, tic_tac_toe: TicTacToe, cell: Cell):
+                #if cell not in list(map(lambda m: m.cell, tic_tac_toe.marks)):
                 tic_tac_toe.place_mark(Mark(
                     cell=cell,
                     symbol=tic_tac_toe.turn,
                     size=(tic_tac_toe.size / tic_tac_toe.grid.dim),
                     position=tic_tac_toe.config.cells_symbol_position.get((cell.x, cell.y))
                 ))
-                """ if tic_tac_toe.place_mark(Mark(
+                if tic_tac_toe.place_mark(Mark(
                     cell,
                     self._tic_tac_toe.turn,
                     tic_tac_toe.size.x / tic_tac_toe.grid.dim,
@@ -166,29 +158,28 @@ class TicTacToeTerminal(TicTacToeGame):
                     tic_tac_toe.change_turn()
                     tic_tac_toe.remove_random_mark() """
 
-            def on_change_turn(self, tic_tac_toe):
+            """ def on_change_turn(self, tic_tac_toe):
                 if tic_tac_toe.has_won(tic_tac_toe.turn):
                     #self.on_game_over(tic_tac_toe)
                     self.post_event(ControlEvent.GAME_OVER)
                 tic_tac_toe.change_turn()
-                tic_tac_toe.remove_random_mark()
+                tic_tac_toe.remove_random_mark() """
 
             def on_time_elapsed(self, tic_tac_toe: TicTacToe, dt: float, status: TicTacToe=None): # type: ignore[override]
-                pass
-                """ if not status:
+                if not status:
                     tic_tac_toe.update(dt)
                 else:
-                    tic_tac_toe.override(status) """
+                    tic_tac_toe.override(status)
 
             def on_player_leave(self, tic_tac_toe: TicTacToe, symbol: Symbol):
                 terminal.stop()
         
         return Controller(terminal.tic_tac_toe)
-    
+
     def _handle_ingoing_messages(self):
-        while self.running:
+        if self.running:
             message = self.client.receive()
-            if message is not None:
+            if message:
                 message = deserialize(message)
                 assert isinstance(message, pygame.event.Event), f"Expected {pygame.event.Event}, got {type(message)}"
                 pygame.event.post(message)
