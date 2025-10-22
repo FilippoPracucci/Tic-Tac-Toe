@@ -52,17 +52,17 @@ class TicTacToe(Sized):
             self._players.append(player)
 
     def add_player(self, player: Player):
-        logger.debug(f"Add player {player}")
         assert isinstance(player, Player), "The player provided has not a valid symbol"
-        #assert list(filter(lambda p: p == player, self.players)).__len__() == 0
+        assert list(filter(lambda p: p == player, self.players)).__len__() == 0, "The player's already joined the game"
         self._players.append(player)
+        logger.debug(f"Add player {player}")
 
     def player(self, player: Player):
         if player not in self._players:
             raise ValueError(f"No such a player: {player.symbol}")
         return list(filter(lambda p: p == player, self._players))[0]
 
-    def remove_player(self, symbol: Symbol):
+    def remove_player_by_symbol(self, symbol: Symbol):
         if list(filter(lambda p: p.symbol == symbol, self._players)).__len__() == 0:
             raise ValueError(f"No such player with symbol {symbol}")
         self.players = list(filter(lambda p: p.symbol != symbol, self._players))
