@@ -150,29 +150,21 @@ class TicTacToe(Sized):
 
     def override(self, other: 'TicTacToe'):
         logger.debug(f"Overriding TicTacToe status")
-        if self is other:
+        if self.marks == other.marks:
             return
-        self.marks = other.marks
-        """ self.size = other.size
+        self.size = other.size
         self.config = other.config
         self.updates = other.updates
         self.time = other.time
-        my_marks = set((mark.cell for mark in self.marks))
-        other_marks = set((mark.cell for mark in other.marks))
-        added = other_marks - my_marks
-        added = {m: other._marks[m] for m in added}
-        removed = my_marks - other_marks
-        removed = {m: self._marks[m] for m in removed}
-        common = my_marks & other_marks
-        common = {m: other._marks[m] for m in common}
-        for _, mark in added.items():
-            self.place_mark(mark)
-        for cell, _ in removed.items():
-            self.remove_mark(cell)
-        for cell, mark in common.items():
-            self.get_mark(cell).override(other.get_mark(cell))
-        print(f"ADDED: {added} - REMOVED: {removed}")
-        return added, removed """
+        self.turn = other.turn
+        my_marks = self.marks
+        other_marks = other.marks
+        for other_mark in other_marks:
+            if not my_marks.__contains__(other_mark):
+                self.place_mark(other_mark)
+        for mark in my_marks:
+            if not other_marks.__contains__(mark):
+                self.remove_mark(mark.cell)
 
     def _get_diagonal(self) -> list[Cell]:
         return list(filter(lambda c: c.x == c.y, self.grid.cells))

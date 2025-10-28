@@ -5,7 +5,7 @@ from tic_tac_toe import TicTacToeGame
 from tic_tac_toe.remote import *
 from tic_tac_toe.utils import Settings
 from tic_tac_toe.model import TicTacToe
-from tic_tac_toe.model.game_object import Player
+from tic_tac_toe.model.game_object import Player, Symbol
 from tic_tac_toe.controller import ControlEvent
 from tic_tac_toe.remote.tcp import TcpClient, TcpConnection, TcpServer, Address
 from tic_tac_toe.remote.presentation import serialize, deserialize
@@ -42,9 +42,6 @@ class TicTacToeCoordinator(TicTacToeGame):
         class Controller(TicTacToeEventHandler, InputHandler):
             def __init__(self, tic_tac_toe: TicTacToe):
                 TicTacToeEventHandler.__init__(self, tic_tac_toe)
-
-            def on_player_join(self, tic_tac_toe: TicTacToe):
-                super().on_player_join(tic_tac_toe)
 
             def on_player_leave(self, tic_tac_toe: TicTacToe, player: Player):
                 self.on_game_over(tic_tac_toe, player=None)
@@ -112,12 +109,11 @@ class TicTacToeCoordinator(TicTacToeGame):
 
 class TicTacToeTerminal(TicTacToeGame):
 
-    def __init__(self, settings: Settings = None):
+    def __init__(self, symbol: Symbol, settings: Settings = None):
         settings = settings or Settings()
         super().__init__(settings)
         self.client = TcpClient(Address(host=self.settings.host or DEFAULT_HOST, port=self.settings.port or DEFAULT_PORT))
-        """ self._thread_receiver = threading.Thread(target=self._handle_ingoing_messages, daemon=True)
-        self._thread_receiver.start() """
+        self.symbol = symbol
 
     def create_controller(terminal):
         from tic_tac_toe.controller.local import TicTacToeInputHandler, EventHandler
@@ -126,9 +122,14 @@ class TicTacToeTerminal(TicTacToeGame):
             def __init__(self, tic_tac_toe: TicTacToe):
                 TicTacToeInputHandler.__init__(self, tic_tac_toe)
 
+            def mouse_clicked(self):
+                pos = self._command.click().__getattribute__("click_point")
+                self.post_event(ControlEvent.MARK_PLACED, cell=self._to_cell(pos), symbol=terminal.symbol)
+
             def post_event(self, event: Event | ControlEvent, **kwargs):
                 event = super().post_event(event, **kwargs)
-                terminal.client.send(serialize(event))
+                if not ControlEvent.TIME_ELAPSED.matches(event):
+                    terminal.client.send(serialize(event))
                 return event
 
             def handle_inputs(self, dt=None):
@@ -137,39 +138,13 @@ class TicTacToeTerminal(TicTacToeGame):
             def handle_events(self):
                 terminal._handle_ingoing_messages()
                 super().handle_events()
-                # return super().handle_events()
 
-            """ def on_mark_placed(self, tic_tac_toe: TicTacToe, cell: Cell):
-                #if cell not in list(map(lambda m: m.cell, tic_tac_toe.marks)):
-                tic_tac_toe.place_mark(Mark(
-                    cell=cell,
-                    symbol=tic_tac_toe.turn,
-                    size=(tic_tac_toe.size / tic_tac_toe.grid.dim),
-                    position=tic_tac_toe.config.cells_symbol_position.get((cell.x, cell.y))
-                ))
-                if tic_tac_toe.place_mark(Mark(
-                    cell,
-                    self._tic_tac_toe.turn,
-                    tic_tac_toe.size.x / tic_tac_toe.grid.dim,
-                    tic_tac_toe.config.cells_symbol_position.get((cell.x, cell.y))
-                )):
-                    if tic_tac_toe.has_won(tic_tac_toe.turn):
-                        self.on_game_over(tic_tac_toe)
-                    tic_tac_toe.change_turn()
-                    tic_tac_toe.remove_random_mark() """
-
-            """def on_change_turn(self, tic_tac_toe: TicTacToe):
-                if tic_tac_toe.has_won(tic_tac_toe.turn):
-                    #self.on_game_over(tic_tac_toe)
-                    self.post_event(ControlEvent.GAME_OVER)
+            def on_change_turn(self, tic_tac_toe: TicTacToe):
                 tic_tac_toe.change_turn()
-                tic_tac_toe.remove_random_mark()"""
+                tic_tac_toe.remove_random_mark()
 
-            def on_time_elapsed(self, tic_tac_toe: TicTacToe, dt: float, status: TicTacToe=None): # type: ignore[override]
-                if not status:
-                    tic_tac_toe.update(dt)
-                else:
-                    tic_tac_toe.override(status)
+            def on_time_elapsed(self, tic_tac_toe: TicTacToe, dt: float, status: TicTacToe): # type: ignore[override]
+                tic_tac_toe.override(status)
 
             def on_player_leave(self, tic_tac_toe: TicTacToe, player: Player):
                 terminal.stop()
@@ -196,7 +171,7 @@ class TicTacToeTerminal(TicTacToeGame):
 
     def before_run(self):
         super().before_run()
-        self.controller.post_event(ControlEvent.PLAYER_JOIN)
+        self.controller.post_event(ControlEvent.PLAYER_JOIN, symbol=self.symbol)
 
     def after_run(self):
         super().after_run()
@@ -207,5 +182,5 @@ def main_coordinator(settings = None):
     TicTacToeCoordinator(settings).run()
 
 
-def main_terminal(settings = None):
-    TicTacToeTerminal(settings).run()
+def main_terminal(symbol: Symbol, settings = None):
+    TicTacToeTerminal(symbol, settings).run()

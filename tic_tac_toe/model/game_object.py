@@ -117,8 +117,3 @@ class Mark(GameObject):
     @property
     def is_nought(self) -> bool:
         return self.symbol == Symbol.NOUGHT
-
-    def override(self, other: GameObject):
-        super().override(other)
-        self.cell = other.cell # type: ignore[attr-defined]
-        self.symbol = other.symbol # type: ignore[attr-defined]

@@ -7,7 +7,7 @@ class TicTacToeInputHandler(InputHandler):
 
     def mouse_clicked(self):
         pos = self._command.click().__getattribute__("click_point")
-        self.post_event(ControlEvent.MARK_PLACED, cell=self._to_cell(pos))
+        self.post_event(ControlEvent.MARK_PLACED, cell=self._to_cell(pos), symbol=self._tic_tac_toe.turn)
     
     def handle_inputs(self, dt=None):
         for event in pygame.event.get(self.INPUT_EVENTS):
@@ -25,11 +25,7 @@ class TicTacToeInputHandler(InputHandler):
         return Cell(value[0], value[1])
 
 class TicTacToeEventHandler(EventHandler):
-    def on_player_join(self, tic_tac_toe: TicTacToe):
-        if len(list(filter(lambda s: s == Symbol.CROSS, map(lambda p: p.symbol, tic_tac_toe.players)))) == 0:
-            symbol = Symbol.CROSS
-        else:
-            symbol = Symbol.NOUGHT
+    def on_player_join(self, tic_tac_toe: TicTacToe, symbol: Symbol):
         tic_tac_toe.add_player(Player(symbol))
 
     def on_player_leave(self, tic_tac_toe: TicTacToe, player: Player):
@@ -44,18 +40,16 @@ class TicTacToeEventHandler(EventHandler):
         else:
             print(f"Player '{player.symbol.value}' has won!")
 
-    def on_mark_placed(self, tic_tac_toe, cell: Cell):
-        tic_tac_toe.place_mark(Mark(
-            cell=cell,
-            symbol=self._tic_tac_toe.turn,
-            size=(tic_tac_toe.size / tic_tac_toe.grid.dim),
-            position=tic_tac_toe.config.cells_symbol_position.get((cell.x, cell.y))
-        ))
-        winner = tic_tac_toe.check_game_end()
-        if winner:
-            self.on_game_over(tic_tac_toe, winner)
-        else:
-            post_event(ControlEvent.CHANGE_TURN)
+    def on_mark_placed(self, tic_tac_toe: TicTacToe, cell: Cell, symbol: Symbol):
+         if tic_tac_toe.turn == symbol:
+            tic_tac_toe.place_mark(Mark(
+                cell=cell,
+                symbol=symbol,
+                size=(tic_tac_toe.size / tic_tac_toe.grid.dim),
+                position=tic_tac_toe.config.cells_symbol_position.get((cell.x, cell.y))
+            ))
+            winner = tic_tac_toe.check_game_end()
+            self.on_game_over(tic_tac_toe, winner) if winner else post_event(ControlEvent.CHANGE_TURN)
 
     def on_change_turn(self, tic_tac_toe: TicTacToe):
         tic_tac_toe.change_turn()

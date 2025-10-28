@@ -120,7 +120,7 @@ class EventHandler:
             elif ControlEvent.TIME_ELAPSED.matches(event):
                 self.on_time_elapsed(self._tic_tac_toe, **event.dict)
 
-    def on_player_join(self, tic_tac_toe: TicTacToe):
+    def on_player_join(self, tic_tac_toe: TicTacToe, symbol: Symbol):
         pass
 
     def on_player_leave(self, tic_tac_toe: TicTacToe, player: Player):
@@ -132,7 +132,7 @@ class EventHandler:
     def on_game_over(self, tic_tac_toe: TicTacToe, player: Player):
         pass
 
-    def on_mark_placed(self, tic_tac_toe: TicTacToe, cell: Cell):
+    def on_mark_placed(self, tic_tac_toe: TicTacToe, cell: Cell, symbol: Symbol):
         pass
 
     def on_change_turn(self, tic_tac_toe: TicTacToe):

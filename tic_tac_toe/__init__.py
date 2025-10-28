@@ -40,9 +40,9 @@ class TicTacToeGame:
                 super().__init__(game.tic_tac_toe)
 
             def on_player_join(this, _):
+                super().on_player_join(game.tic_tac_toe)
                 if not game.turn:
                     game.turn = game.tic_tac_toe.get_turn_player()
-                super().on_player_join(game.tic_tac_toe)
 
             def on_change_turn(this, _):
                 game.turn = game.tic_tac_toe.get_turn_player()
