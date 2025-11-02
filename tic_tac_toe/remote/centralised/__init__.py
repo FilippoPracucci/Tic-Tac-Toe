@@ -48,6 +48,7 @@ class TicTacToeCoordinator(TicTacToeGame):
 
             def on_game_over(self, tic_tac_toe: TicTacToe, player: Player):
                 super().on_game_over(tic_tac_toe, player)
+                coordinator._broadcast_to_all_peers(self.create_event(ControlEvent.GAME_OVER, player=player))
                 coordinator.stop()
 
             def handle_inputs(self, dt=None):
@@ -114,6 +115,8 @@ class TicTacToeTerminal(TicTacToeGame):
         super().__init__(settings)
         self.client = TcpClient(Address(host=self.settings.host or DEFAULT_HOST, port=self.settings.port or DEFAULT_PORT))
         self.symbol = symbol
+        self._thread_receiver = threading.Thread(target=self._handle_ingoing_messages, daemon=True)
+        self._thread_receiver.start()
 
     def create_controller(terminal):
         from tic_tac_toe.controller.local import TicTacToeInputHandler, EventHandler
@@ -133,25 +136,28 @@ class TicTacToeTerminal(TicTacToeGame):
                 return event
 
             def handle_inputs(self, dt=None):
-                return super().handle_inputs(dt=None)
+                return super().handle_inputs(dt)
 
-            def handle_events(self):
-                terminal._handle_ingoing_messages()
-                super().handle_events()
+            """ def handle_events(self):
+                # terminal._handle_ingoing_messages()
+                super().handle_events() """
 
             def on_change_turn(self, tic_tac_toe: TicTacToe):
                 tic_tac_toe.change_turn()
                 tic_tac_toe.remove_random_mark()
 
-            def on_time_elapsed(self, tic_tac_toe: TicTacToe, dt: float, status: TicTacToe): # type: ignore[override]
-                tic_tac_toe.override(status)
+            def on_time_elapsed(self, tic_tac_toe: TicTacToe, dt: float, status: TicTacToe=None): # type: ignore[override]
+                if not status:
+                    tic_tac_toe.update(dt)
+                else:
+                    tic_tac_toe.override(status)
 
             def on_player_leave(self, tic_tac_toe: TicTacToe, player: Player):
                 terminal.stop()
 
-            def on_game_over(self, tic_tac_toe, player):
+            def on_game_over(self, tic_tac_toe: TicTacToe, player: Player):
                 if player:
-                    print(f"Player '{player.symbol.value}' has won!")
+                    print(f"You won!" if player.symbol == terminal.symbol else f"You lost!")
                 else:
                     print("Game ended")
                 terminal.stop()
@@ -159,15 +165,16 @@ class TicTacToeTerminal(TicTacToeGame):
         return Controller(terminal.tic_tac_toe)
 
     def _handle_ingoing_messages(self):
-        if self.running:
+        while self.running:
             try:
                 message = self.client.receive()
                 message = deserialize(message)
                 assert isinstance(message, pygame.event.Event), f"Expected {pygame.event.Event}, got {type(message)}"
                 pygame.event.post(message)
             except ConnectionResetError:
-                print(f"Coordinator stopped.")
-                self.controller.on_game_over(self.tic_tac_toe, None)
+                if self.running:
+                    print(f"Coordinator stopped")
+                    self.controller.on_game_over(self.tic_tac_toe, None)
 
     def before_run(self):
         super().before_run()

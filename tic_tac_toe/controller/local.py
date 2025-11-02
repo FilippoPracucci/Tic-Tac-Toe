@@ -41,7 +41,7 @@ class TicTacToeEventHandler(EventHandler):
             print(f"Player '{player.symbol.value}' has won!")
 
     def on_mark_placed(self, tic_tac_toe: TicTacToe, cell: Cell, symbol: Symbol):
-         if tic_tac_toe.turn == symbol:
+        if tic_tac_toe.turn == symbol:
             tic_tac_toe.place_mark(Mark(
                 cell=cell,
                 symbol=symbol,
@@ -49,7 +49,10 @@ class TicTacToeEventHandler(EventHandler):
                 position=tic_tac_toe.config.cells_symbol_position.get((cell.x, cell.y))
             ))
             winner = tic_tac_toe.check_game_end()
-            self.on_game_over(tic_tac_toe, winner) if winner else post_event(ControlEvent.CHANGE_TURN)
+            if winner:
+                post_event(ControlEvent.GAME_OVER, player=winner)
+            else:
+                post_event(ControlEvent.CHANGE_TURN)
 
     def on_change_turn(self, tic_tac_toe: TicTacToe):
         tic_tac_toe.change_turn()
