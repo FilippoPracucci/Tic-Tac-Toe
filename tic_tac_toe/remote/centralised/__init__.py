@@ -136,11 +136,10 @@ class TicTacToeTerminal(TicTacToeGame):
                 return event
 
             def handle_inputs(self, dt=None):
-                return super().handle_inputs(dt)
-
-            """ def handle_events(self):
-                # terminal._handle_ingoing_messages()
-                super().handle_events() """
+                if self._tic_tac_toe.is_player_lobby_full():
+                    return super().handle_inputs(dt)
+                else:
+                    pygame.event.clear(self.INPUT_EVENTS)
 
             def on_change_turn(self, tic_tac_toe: TicTacToe):
                 tic_tac_toe.change_turn()
