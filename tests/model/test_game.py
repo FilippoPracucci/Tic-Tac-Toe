@@ -32,12 +32,19 @@ class TestTicTacToe(TestCase):
         with self.assertRaises(ValueError):
             self.tictactoe.remove_player_by_symbol(Symbol.NOUGHT)
 
+    def test_is_player_lobby_full(self):
+        self.tictactoe.players = [Player(Symbol.CROSS), Player(Symbol.NOUGHT)]
+        self.assertTrue(self.tictactoe.is_player_lobby_full())
+
+    def test_is_player_lobby_not_full(self):
+        self.tictactoe.players = [Player(Symbol.CROSS)]
+        self.assertFalse(self.tictactoe.is_player_lobby_full())
+
     def test_get_turn_player(self):
         self.tictactoe.players = [Player(Symbol.CROSS), Player(Symbol.NOUGHT)]
         self.assertEqual(self.tictactoe.players[0], self.tictactoe.get_turn_player())
         self.tictactoe.change_turn()
         self.assertEqual(self.tictactoe.players[1], self.tictactoe.get_turn_player())
-
 
     def test_initial_marks(self):
         self.assertEqual(self.tictactoe.marks, list())
@@ -57,3 +64,11 @@ class TestTicTacToe(TestCase):
         self.assertEqual(0, self.tictactoe.marks.__len__())
         with self.assertRaises(ValueError):
             self.tictactoe.remove_mark(cell)
+
+    def test_override(self):
+        other = TicTacToe(Settings.size, players=[Player(Symbol.CROSS)])
+        other.marks = [Mark(Cell(0, 2), Symbol.CROSS), Mark(Cell(0, 0), Symbol.NOUGHT), Mark(Cell(1, 2), Symbol.CROSS)]
+        self.tictactoe.players = [Player(Symbol.NOUGHT)]
+        self.tictactoe.marks = [Mark(Cell(0, 1), Symbol.CROSS), Mark(Cell(0, 0), Symbol.NOUGHT)]
+        self.tictactoe.override(other)
+        self.assertEqual(other, self.tictactoe)

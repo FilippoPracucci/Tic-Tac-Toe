@@ -11,6 +11,7 @@ class Settings:
     port: Optional[int] = None
     gui: bool = True
     dim: int = 3
+    lobby_size: int = 2
 
 @dataclass
 class Config:

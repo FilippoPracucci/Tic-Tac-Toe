@@ -94,8 +94,14 @@ class Symbol(Enum):
 class Player:
     symbol: Symbol
 
+    def __eq__(self, other: 'Player'):
+        return isinstance(other, type(self)) and self.symbol == other.symbol
+
     def __hash__(self):
         return hash((self.symbol))
+    
+    def __repr__(self):
+        return f'<{type(self).__name__}(id={id(self)}, symbol={self.symbol})>'
 
 class Mark(GameObject):
     from .grid import Cell
@@ -117,3 +123,8 @@ class Mark(GameObject):
     @property
     def is_nought(self) -> bool:
         return self.symbol == Symbol.NOUGHT
+    
+    def override(self, other: GameObject):
+        super().override(other)
+        self.cell = other.cell # type: ignore[attr-defined]
+        self.symbol = other.symbol # type: ignore[attr-defined]

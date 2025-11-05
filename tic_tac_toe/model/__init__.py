@@ -68,9 +68,12 @@ class TicTacToe(Sized):
         self.players = list(filter(lambda p: p.symbol != symbol, self._players))
         logger.debug(f"Removed player from {self} with symbol {symbol}")
 
+    def is_player_lobby_full(self) -> bool:
+        return self.players.__len__() == Settings.lobby_size
+
     @property
     def marks(self) -> list[Mark]:
-        return list(self._marks)
+        return sorted(self._marks, key=lambda m: (m.cell.x, m.cell.y))
     
     @marks.setter
     def marks(self, marks) -> list[Mark]:
@@ -150,7 +153,7 @@ class TicTacToe(Sized):
 
     def override(self, other: 'TicTacToe'):
         logger.debug(f"Overriding TicTacToe status")
-        if self.marks == other.marks:
+        if self == other:
             return
         self.size = other.size
         self.config = other.config
@@ -165,6 +168,16 @@ class TicTacToe(Sized):
         for mark in my_marks:
             if not other_marks.__contains__(mark):
                 self.remove_mark(mark.cell)
+            else:
+                self.get_mark(mark.cell).override(other.get_mark(mark.cell))
+        my_players = self.players
+        other_players = other.players
+        for other_player in other_players:
+            if not my_players.__contains__(other_player):
+                self.add_player(other_player)
+        for player in my_players:
+            if not other_players.__contains__(player):
+                self.remove_player_by_symbol(player.symbol)
 
     def _get_diagonal(self) -> list[Cell]:
         return list(filter(lambda c: c.x == c.y, self.grid.cells))
