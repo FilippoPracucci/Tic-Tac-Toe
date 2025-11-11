@@ -79,7 +79,7 @@ def post_event(event: pygame.event.Event | ControlEvent, **kwargs):
     return event
 
 class InputHandler:
-    INPUT_EVENTS = pygame.MOUSEBUTTONDOWN
+    INPUT_EVENTS = (pygame.MOUSEBUTTONDOWN, pygame.KEYDOWN)
 
     def create_event(self, event: pygame.event.Event | ControlEvent, **kwargs):
         return create_event(event, **kwargs)
@@ -123,13 +123,13 @@ class EventHandler:
     def on_player_join(self, tic_tac_toe: TicTacToe, symbol: Symbol):
         pass
 
-    def on_player_leave(self, tic_tac_toe: TicTacToe, player: Player):
+    def on_player_leave(self, tic_tac_toe: TicTacToe, symbol: Symbol):
         pass
 
     def on_game_start(self, tic_tac_toe: TicTacToe):
         pass
 
-    def on_game_over(self, tic_tac_toe: TicTacToe, player: Player):
+    def on_game_over(self, tic_tac_toe: TicTacToe, symbol: Symbol):
         pass
 
     def on_mark_placed(self, tic_tac_toe: TicTacToe, cell: Cell, symbol: Symbol):

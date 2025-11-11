@@ -48,8 +48,8 @@ class TicTacToeGame:
                 super().on_change_turn(game.tic_tac_toe)
                 game.turn = game.tic_tac_toe.get_turn_player()
 
-            def on_game_over(this, tic_tac_toe: TicTacToe, player: Player):
-                super().on_game_over(tic_tac_toe, player)
+            def on_game_over(this, tic_tac_toe: TicTacToe, symbol: Symbol):
+                super().on_game_over(tic_tac_toe, symbol)
                 game.stop()
 
         return Controller()

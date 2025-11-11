@@ -5,7 +5,7 @@ from tic_tac_toe import TicTacToeGame
 from tic_tac_toe.remote import *
 from tic_tac_toe.utils import Settings
 from tic_tac_toe.model import TicTacToe
-from tic_tac_toe.model.game_object import Player, Symbol
+from tic_tac_toe.model.game_object import Symbol
 from tic_tac_toe.controller import ControlEvent
 from tic_tac_toe.remote.tcp import TcpClient, TcpConnection, TcpServer, Address
 from tic_tac_toe.remote.presentation import serialize, deserialize
@@ -43,12 +43,14 @@ class TicTacToeCoordinator(TicTacToeGame):
             def __init__(self, tic_tac_toe: TicTacToe):
                 TicTacToeEventHandler.__init__(self, tic_tac_toe)
 
-            def on_player_leave(self, tic_tac_toe: TicTacToe, player: Player):
-                self.on_game_over(tic_tac_toe, player=None)
+            def on_player_leave(self, tic_tac_toe: TicTacToe, symbol: Symbol):
+                if not tic_tac_toe.is_player_lobby_full():
+                    super().on_player_leave(tic_tac_toe, symbol=symbol)
+                else:
+                    self.on_game_over(tic_tac_toe, symbol=None)
 
-            def on_game_over(self, tic_tac_toe: TicTacToe, player: Player):
-                super().on_game_over(tic_tac_toe, player)
-                coordinator._broadcast_to_all_peers(self.create_event(ControlEvent.GAME_OVER, player=player))
+            def on_game_over(self, tic_tac_toe: TicTacToe, symbol: Symbol):
+                super().on_game_over(tic_tac_toe, symbol)
                 coordinator.stop()
 
             def handle_inputs(self, dt=None):
@@ -76,6 +78,11 @@ class TicTacToeCoordinator(TicTacToeGame):
     def add_peer(self, peer):
         with self._lock:
             self._peers.add(peer)
+
+    def remove_peer(self, peer):
+        with self._lock:
+            if self._peers.__contains__(peer):
+                self._peers.remove(peer)
 
     def _broadcast_to_all_peers(self, message):
         event = serialize(message)
@@ -105,8 +112,10 @@ class TicTacToeCoordinator(TicTacToeGame):
                     self._broadcast_to_all_peers(payload)
             case ConnectionEvent.CLOSE:
                 logger.info(f"Connection with peer {connection.remote_address} closed")
+                self.remove_peer((connection.remote_address.host, connection.remote_address.port))
             case ConnectionEvent.ERROR:
                 logger.error(error)
+                self.remove_peer((connection.remote_address.host, connection.remote_address.port))
 
 class TicTacToeTerminal(TicTacToeGame):
 
@@ -137,8 +146,11 @@ class TicTacToeTerminal(TicTacToeGame):
 
             def handle_inputs(self, dt=None):
                 if self._tic_tac_toe.is_player_lobby_full():
-                    return super().handle_inputs(dt)
+                    return super().handle_inputs(dt, terminal.symbol)
                 else:
+                    for event in pygame.event.get(pygame.KEYDOWN):
+                        if event.key == pygame.K_ESCAPE:
+                            self.post_event(ControlEvent.PLAYER_LEAVE, symbol=terminal.symbol)
                     pygame.event.clear(self.INPUT_EVENTS)
 
             def on_change_turn(self, tic_tac_toe: TicTacToe):
@@ -151,12 +163,13 @@ class TicTacToeTerminal(TicTacToeGame):
                 else:
                     tic_tac_toe.override(status)
 
-            def on_player_leave(self, tic_tac_toe: TicTacToe, player: Player):
+            def on_player_leave(self, tic_tac_toe: TicTacToe, symbol: Symbol):
+                print(f"Player '{symbol.value}' has left")
                 terminal.stop()
 
-            def on_game_over(self, tic_tac_toe: TicTacToe, player: Player):
-                if player:
-                    print(f"You won!" if player.symbol == terminal.symbol else f"You lost!")
+            def on_game_over(self, tic_tac_toe: TicTacToe, symbol: Symbol):
+                if symbol:
+                    print(f"You won!" if symbol == terminal.symbol else f"You lost!")
                 else:
                     print("Game ended")
                 terminal.stop()

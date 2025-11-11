@@ -9,12 +9,12 @@ class TicTacToeInputHandler(InputHandler):
         pos = self._command.click().__getattribute__("click_point")
         self.post_event(ControlEvent.MARK_PLACED, cell=self._to_cell(pos), symbol=self._tic_tac_toe.turn)
     
-    def handle_inputs(self, dt=None):
+    def handle_inputs(self, dt=None, symbol: Symbol=None):
         for event in pygame.event.get(self.INPUT_EVENTS):
             if event.type == pygame.MOUSEBUTTONDOWN:
                 self.mouse_clicked()
-            elif event.type in [pygame.KEYDOWN, pygame.KEYUP]:
-                self.post_event(ControlEvent.PLAYER_LEAVE)
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                self.post_event(ControlEvent.PLAYER_LEAVE, symbol=symbol)
         if dt is not None:
             self.time_elapsed(dt)
 
@@ -28,17 +28,17 @@ class TicTacToeEventHandler(EventHandler):
     def on_player_join(self, tic_tac_toe: TicTacToe, symbol: Symbol):
         tic_tac_toe.add_player(Player(symbol))
 
-    def on_player_leave(self, tic_tac_toe: TicTacToe, player: Player):
-        self.on_game_over(tic_tac_toe, player=None)
+    def on_player_leave(self, tic_tac_toe: TicTacToe, symbol: Symbol):
+        tic_tac_toe.remove_player_by_symbol(symbol)
 
     def on_game_start(self, tic_tac_toe: TicTacToe):
         pass
 
-    def on_game_over(self, tic_tac_toe: TicTacToe, player: Player):
-        if not player:
+    def on_game_over(self, tic_tac_toe: TicTacToe, symbol: Symbol):
+        if not symbol:
             print("Game ended because a player left")
         else:
-            print(f"Player '{player.symbol.value}' has won!")
+            print(f"Player '{symbol.value}' has won!")
 
     def on_mark_placed(self, tic_tac_toe: TicTacToe, cell: Cell, symbol: Symbol):
         if tic_tac_toe.turn == symbol:
@@ -50,7 +50,7 @@ class TicTacToeEventHandler(EventHandler):
             ))
             winner = tic_tac_toe.check_game_end()
             if winner:
-                post_event(ControlEvent.GAME_OVER, player=winner)
+                post_event(ControlEvent.GAME_OVER, symbol=winner.symbol)
             else:
                 post_event(ControlEvent.CHANGE_TURN)
 
