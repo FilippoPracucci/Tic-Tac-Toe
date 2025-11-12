@@ -55,18 +55,18 @@ class TicTacToe(Sized):
         assert isinstance(player, Player), "The player provided has not a valid symbol"
         assert list(filter(lambda p: p == player, self.players)).__len__() == 0, "The player's already joined the game"
         self._players.append(player)
-        logger.debug(f"Add player {player}")
+        logger.debug(f"Add {player}")
 
     def player(self, player: Player):
         if player not in self._players:
-            raise ValueError(f"No such a player: {player.symbol}")
+            raise ValueError(f"No such a player with {player.symbol}")
         return list(filter(lambda p: p == player, self._players))[0]
 
     def remove_player_by_symbol(self, symbol: Symbol):
         if list(filter(lambda p: p.symbol == symbol, self._players)).__len__() == 0:
-            raise ValueError(f"No such player with symbol {symbol}")
+            raise ValueError(f"No such player with {symbol}")
         self.players = list(filter(lambda p: p.symbol != symbol, self._players))
-        logger.debug(f"Removed player from {self} with symbol {symbol}")
+        logger.debug(f"Removed player from {self} with {symbol}")
 
     def is_player_lobby_full(self) -> bool:
         return self.players.__len__() == Settings.lobby_size
@@ -85,11 +85,11 @@ class TicTacToe(Sized):
 
     def place_mark(self, mark: Mark) -> bool:
         if list(map(lambda m: m.cell, self.marks)).__contains__(mark.cell):
-            logger.debug(f"Cell {(mark.cell.x, mark.cell.y)} is already marked.")
+            logger.debug(f"{mark.cell} is already marked.")
             return False
         else:
             self._marks.append(mark)
-            logger.debug(f"Added mark {mark} to {self} on cell {mark.cell}")
+            logger.debug(f"Added {mark} to {self} on {mark.cell}")
             return True
 
     def has_mark(self, cell: Cell) -> bool:
@@ -100,10 +100,11 @@ class TicTacToe(Sized):
         if self.has_mark(cell):
             return list(filter(lambda m: m.cell == cell, self.marks)).__getitem__(0)
         else:
-            raise ValueError(f"Cell {cell} is not marked")
+            raise ValueError(f"{cell} is not marked")
 
     def remove_mark(self, cell: Cell):
         self._marks.remove(self.get_mark(cell))
+        logger.debug(f"Removed mark on {cell} from {self}")
 
     def remove_random_mark(self):
         turn_marks = self.get_crosses() if self.turn.is_cross else self.get_noughts()
@@ -133,12 +134,15 @@ class TicTacToe(Sized):
 
         for player in self.players:
             if has_won(player):
+                logger.debug(f"The {player} has won")
                 return player
+        logger.debug(f"Game not ended")
         return None
 
     def reset_grid(self):
         self.marks = list()
         self.grid = Grid(self.grid.dim)
+        logger.debug(f"Reset grid")
 
     def update(self, delta_time: float):
         self.updates += 1
@@ -150,11 +154,12 @@ class TicTacToe(Sized):
 
     def change_turn(self):
         self.turn = Symbol.CROSS if self.turn.is_nought else Symbol.NOUGHT
+        logger.debug(f"Change turn. Now the player '{self.turn.value}' is in turn")
 
     def override(self, other: 'TicTacToe'):
-        logger.debug(f"Overriding TicTacToe status")
         if self == other:
             return
+        logger.debug(f"Overriding TicTacToe status")
         self.size = other.size
         self.config = other.config
         self.updates = other.updates

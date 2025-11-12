@@ -1,4 +1,5 @@
 from tic_tac_toe.remote import Connection, Server, ConnectionEvent, ServerEvent, Address
+from tic_tac_toe.log import logger
 import socket
 import threading
 
@@ -40,12 +41,15 @@ class TcpConnection(Connection):
             message = message.encode()
             message = int.to_bytes(len(message), 2, 'big') + message
         self.__socket.sendall(message)
+        logger.debug(f"Sent {message!r} to all")
 
     def receive(self):
         length = int.from_bytes(self.__socket.recv(2), 'big')
         if length == 0:
             return None
-        return self.__socket.recv(length).decode()
+        payload = self.__socket.recv(length).decode()
+        logger.debug(f"Received {length} bytes: {payload}")
+        return payload
     
     def close(self):
         self.__socket.close()
@@ -77,6 +81,7 @@ class TcpServer(Server):
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._address = Address.local_port_on_any_interface(port)
         self.__socket.bind(self._address.as_tuple())
+        logger.debug(f"Bind TCP socket to {self.__socket.getsockname()}")
         self.__listener_thread = threading.Thread(target=self.__handle_incoming_connections, daemon=True)
         self._connections = {}
         self.__callback = callback
@@ -129,5 +134,7 @@ class TcpClient(TcpConnection):
     def __init__(self, server_address: Address, callback=None):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind(Address.local_port_on_any_interface(0).as_tuple())
+        logger.debug(f"Bind TCP socket to {sock.getsockname()}")
         sock.connect(server_address.as_tuple())
+        logger.debug(f"Connect to server at address '{server_address}'")
         super().__init__(sock, callback)

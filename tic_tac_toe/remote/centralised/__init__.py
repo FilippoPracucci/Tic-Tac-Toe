@@ -92,15 +92,15 @@ class TicTacToeCoordinator(TicTacToeGame):
     def _on_new_connection(self, event: ServerEvent, connection: TcpConnection, address: Address, error):
         match event:
             case ServerEvent.LISTEN:
-                logger.info(f"Server listening on port {address.port} at {address.ip}")
+                logger.debug(f"Server listening on port {address.port} at {address.ip}")
             case ServerEvent.CONNECT:
-                logger.info(f"Open ingoing connection from: {address}")
+                logger.debug(f"Open ingoing connection from: {address}")
                 self.add_peer(address)
                 connection.callback = self._on_message_received
             case ServerEvent.STOP:
-                logger.info(f"Stop listening for new connections")
+                logger.debug(f"Stop listening for new connections")
             case ServerEvent.ERROR:
-                logger.error(error)
+                logger.debug(error)
 
     def _on_message_received(self, event: ConnectionEvent, payload, connection: TcpConnection, error):
         match event:
@@ -111,10 +111,10 @@ class TicTacToeCoordinator(TicTacToeGame):
                     pygame.event.post(payload)
                     self._broadcast_to_all_peers(payload)
             case ConnectionEvent.CLOSE:
-                logger.info(f"Connection with peer {connection.remote_address} closed")
+                logger.debug(f"Connection with peer {connection.remote_address} closed")
                 self.remove_peer((connection.remote_address.host, connection.remote_address.port))
             case ConnectionEvent.ERROR:
-                logger.error(error)
+                logger.debug(error)
                 self.remove_peer((connection.remote_address.host, connection.remote_address.port))
 
 class TicTacToeTerminal(TicTacToeGame):
@@ -185,7 +185,7 @@ class TicTacToeTerminal(TicTacToeGame):
                 pygame.event.post(message)
             except ConnectionResetError:
                 if self.running:
-                    print(f"Coordinator stopped")
+                    logger.debug(f"Coordinator stopped")
                     self.controller.on_game_over(self.tic_tac_toe, None)
 
     def before_run(self):
