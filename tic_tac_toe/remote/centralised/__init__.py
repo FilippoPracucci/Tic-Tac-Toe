@@ -113,6 +113,9 @@ class TicTacToeCoordinator(TicTacToeGame):
             case ConnectionEvent.CLOSE:
                 logger.debug(f"Connection with peer {connection.remote_address} closed")
                 self.remove_peer((connection.remote_address.host, connection.remote_address.port))
+                if self.tic_tac_toe.is_player_lobby_full():
+                    self.controller.post_event(ControlEvent.GAME_OVER, symbol=None)
+                self.tic_tac_toe.players = []
             case ConnectionEvent.ERROR:
                 logger.debug(error)
                 self.remove_peer((connection.remote_address.host, connection.remote_address.port))

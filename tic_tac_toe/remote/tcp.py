@@ -6,6 +6,8 @@ import threading
 class TcpConnection(Connection):
     def __init__(self, socket: socket.socket, callback=None):
         self.__socket = socket
+        self.__local_address = Address(*self.__socket.getsockname())
+        self.__remote_address = Address(*self.__socket.getpeername())
         self.__notify_closed = False
         self.__callback = callback
         self.__receiver_thread = threading.Thread(target=self.__handle_incoming_messages, daemon=True)
@@ -14,11 +16,11 @@ class TcpConnection(Connection):
 
     @property
     def local_address(self) -> Address:
-        return Address(*self.__socket.getsockname())
-    
+        return self.__local_address
+
     @property
     def remote_address(self) -> Address:
-        return Address(*self.__socket.getpeername())
+        return self.__remote_address
 
     @property
     def callback(self):
