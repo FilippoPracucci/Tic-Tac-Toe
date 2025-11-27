@@ -2,7 +2,7 @@ from pygame.event import Event
 from tic_tac_toe.model.grid import *
 from tic_tac_toe.model.game_object import *
 from tic_tac_toe.model import *
-from tic_tac_toe.controller import ControlEvent
+from tic_tac_toe.controller import ControlEvent, LobbyEvent
 from tic_tac_toe.utils import Config
 import json
 
@@ -48,11 +48,16 @@ class Serializer:
 
     def _serialize_controlevent(self, control_event: ControlEvent):
         return self._to_dict(control_event, "name")
+    
+    def _serialize_lobbyevent(self, lobby_event: LobbyEvent):
+        return self._to_dict(lobby_event, "name")
 
     def _serialize_event(self, event: Event):
         obj = self._to_dict(event, "type", "dict")
         if ControlEvent.is_control_event(event):
             obj["type"] = self._serialize(ControlEvent.by_value(event.type))
+        elif LobbyEvent.is_lobby_event(event):
+            obj["type"] = self._serialize(LobbyEvent.by_value(event.type))
         return obj
 
     def _serialize_gameobject(self, obj: GameObject):
@@ -109,9 +114,14 @@ class Deserializer:
     def _deserialize_controlevent(self, obj) -> ControlEvent:
         return ControlEvent[obj["name"]]
 
+    def _deserialize_lobbyevent(self, obj) -> LobbyEvent:
+        return LobbyEvent[obj["name"]]
+
     def _deserialize_event(self, obj) -> Event:
         fields = self._from_dict(obj, "type", "dict")
         if isinstance(fields[0], ControlEvent):
+            fields[0] = fields[0].value
+        elif isinstance(fields[0], LobbyEvent):
             fields[0] = fields[0].value
         return Event(*fields)
 

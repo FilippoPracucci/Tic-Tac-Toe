@@ -25,6 +25,12 @@ class TicTacToeInputHandler(InputHandler):
         return Cell(value[0], value[1])
 
 class TicTacToeEventHandler(EventHandler):
+    def on_player_create_game(self):
+        pass
+
+    def on_player_join_game(self, game_id: int):
+        pass
+
     def on_player_join(self, tic_tac_toe: TicTacToe, symbol: Symbol):
         tic_tac_toe.add_player(Player(symbol))
 

@@ -5,7 +5,7 @@ from statistics import mean
 @dataclass
 class Settings:
     debug: bool = True
-    size: tuple = (600, 600)
+    size: tuple = (900, 600)
     fps: int = 60
     host: Optional[str] = None
     port: Optional[int] = None

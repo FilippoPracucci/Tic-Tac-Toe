@@ -2,12 +2,49 @@ import pygame
 from ..model import *
 from dataclasses import dataclass, field
 from enum import Enum
+from tic_tac_toe.model import Symbol
+
+class LobbyEvent(Enum):
+    CREATE_GAME = pygame.event.custom_type()
+    DELETE_GAME = pygame.event.custom_type()
+    JOIN_GAME = pygame.event.custom_type()
+    LEAVE_GAME = pygame.event.custom_type()
+
+    @classmethod
+    def all(cls) -> set['LobbyEvent']:
+        return set(cls.__members__.values())
+
+    @classmethod
+    def all_types(cls) -> set[int]:
+        return {event.value for event in cls.all()}
+
+    @classmethod
+    def is_lobby_event(cls, event: pygame.event.Event) -> bool:
+        return any(lobby_event.matches(event) for lobby_event in cls.all())
+
+    @classmethod
+    def by_value(cls, value: int) -> 'LobbyEvent':
+        for lobby_event in cls.all():
+            if lobby_event.value == value:
+                return lobby_event
+        raise KeyError(f"{cls.__name__} with value {value} not found")
+
+    def matches(self, event) -> bool:
+        if isinstance(event, pygame.event.Event):
+            return event.type == self.value
+        elif isinstance(event, LobbyEvent):
+            return event == self
+        elif isinstance(event, int):
+            return event == self.value
+        return False
 
 class ControlEvent(Enum):
+    PLAYER_CREATE_GAME = pygame.event.custom_type()
+    PLAYER_JOIN_GAME = pygame.event.custom_type()
     PLAYER_JOIN = pygame.event.custom_type()
     PLAYER_LEAVE = pygame.event.custom_type()
     GAME_START = pygame.event.custom_type()
-    GAME_OVER = pygame.QUIT
+    GAME_OVER = pygame.QUIT # TODO: change to a custom type (return to home page not quit)
     MARK_PLACED = pygame.event.custom_type()
     CHANGE_TURN = pygame.event.custom_type()
     TIME_ELAPSED = pygame.event.custom_type()
@@ -65,7 +102,7 @@ class ActionMap:
         return cls(pygame.MOUSEBUTTONDOWN, click_point=Vector2(pygame.mouse.get_pos()), name="click")
 
 def create_event(event: pygame.event.Event | ControlEvent, **kwargs):
-    if isinstance(event, ControlEvent):
+    if isinstance(event, (LobbyEvent, ControlEvent)):
         event = pygame.event.Event(event.value, **kwargs)
     elif isinstance(event, pygame.event.Event) and event.dict != kwargs:
         data = event.dict
@@ -73,7 +110,7 @@ def create_event(event: pygame.event.Event | ControlEvent, **kwargs):
         event = pygame.event.Event(event.type, data)
     return event
 
-def post_event(event: pygame.event.Event | ControlEvent, **kwargs):
+def post_event(event: pygame.event.Event | LobbyEvent | ControlEvent, **kwargs):
     event = create_event(event, **kwargs)
     pygame.event.post(event)
     return event
@@ -81,10 +118,10 @@ def post_event(event: pygame.event.Event | ControlEvent, **kwargs):
 class InputHandler:
     INPUT_EVENTS = (pygame.MOUSEBUTTONDOWN, pygame.KEYDOWN)
 
-    def create_event(self, event: pygame.event.Event | ControlEvent, **kwargs):
+    def create_event(self, event: pygame.event.Event | LobbyEvent | ControlEvent, **kwargs):
         return create_event(event, **kwargs)
 
-    def post_event(self, event: pygame.event.Event | ControlEvent, **kwargs):
+    def post_event(self, event: pygame.event.Event | LobbyEvent | ControlEvent, **kwargs):
         return post_event(event, **kwargs)
 
     def mouse_clicked(self):
@@ -96,6 +133,31 @@ class InputHandler:
     def handle_inputs(self, dt=None):
         pass
 
+class LobbyEventHandler:
+    LOBBY_EVENTS = tuple(LobbyEvent.all_types())
+
+    def handle_events(self):
+        for event in pygame.event.get(self.LOBBY_EVENTS):
+            if LobbyEvent.CREATE_GAME.matches(event):
+                self.on_create_game()
+            elif LobbyEvent.DELETE_GAME.matches(event):
+                self.on_delete_game(**event.dict)
+            elif LobbyEvent.JOIN_GAME.matches(event):
+                self.on_join_game(**event.dict)
+            elif LobbyEvent.LEAVE_GAME.matches(event):
+                self.on_leave_game(**event.dict)
+
+    def on_create_game(self, connection):
+        pass
+
+    def on_delete_game(self, game_id: int):
+        pass
+
+    def on_join_game(self, game_id: int, symbol: Symbol, connection):
+        pass
+
+    def on_leave_game(self, game_id: int, symbol: Symbol):
+        pass
 
 class EventHandler:
     GAME_EVENTS = tuple(ControlEvent.all_types())
@@ -105,7 +167,11 @@ class EventHandler:
 
     def handle_events(self):
         for event in pygame.event.get(self.GAME_EVENTS):
-            if ControlEvent.PLAYER_JOIN.matches(event):
+            if ControlEvent.PLAYER_CREATE_GAME.matches(event):
+                self.on_player_create_game()
+            elif ControlEvent.PLAYER_JOIN_GAME.matches(event):
+                self.on_player_join_game(**event.dict)
+            elif ControlEvent.PLAYER_JOIN.matches(event):
                 self.on_player_join(self._tic_tac_toe, **event.dict)
             elif ControlEvent.PLAYER_LEAVE.matches(event):
                 self.on_player_leave(self._tic_tac_toe, **event.dict)
@@ -119,6 +185,12 @@ class EventHandler:
                 self.on_change_turn(self._tic_tac_toe)
             elif ControlEvent.TIME_ELAPSED.matches(event):
                 self.on_time_elapsed(self._tic_tac_toe, **event.dict)
+
+    def on_player_create_game(self):
+        pass
+
+    def on_player_join_game(self, game_id: int):
+        pass
 
     def on_player_join(self, tic_tac_toe: TicTacToe, symbol: Symbol):
         pass
