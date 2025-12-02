@@ -139,7 +139,7 @@ class LobbyEventHandler:
     def handle_events(self):
         for event in pygame.event.get(self.LOBBY_EVENTS):
             if LobbyEvent.CREATE_GAME.matches(event):
-                self.on_create_game()
+                self.on_create_game(**event.dict)
             elif LobbyEvent.DELETE_GAME.matches(event):
                 self.on_delete_game(**event.dict)
             elif LobbyEvent.JOIN_GAME.matches(event):
@@ -147,13 +147,19 @@ class LobbyEventHandler:
             elif LobbyEvent.LEAVE_GAME.matches(event):
                 self.on_leave_game(**event.dict)
 
+    def create_event(self, event: pygame.event.Event | LobbyEvent, **kwargs):
+        return create_event(event, **kwargs)
+
+    def post_event(self, event: pygame.event.Event | LobbyEvent, **kwargs):
+        return post_event(event, **kwargs)
+
     def on_create_game(self, connection):
         pass
 
     def on_delete_game(self, game_id: int):
         pass
 
-    def on_join_game(self, game_id: int, symbol: Symbol, connection):
+    def on_join_game(self, game_id: int, connection):
         pass
 
     def on_leave_game(self, game_id: int, symbol: Symbol):
