@@ -20,63 +20,35 @@ DEFAULT_PORT = 12345
 class LobbyCoordinator():
 
     def __init__(self, settings: Settings=None):
+        self.logger = logger("LobbyCoordinator")
         self.settings = settings
         self.controller = self.create_controller()
         self.server = TcpServer(self.settings.port or DEFAULT_PORT, self._on_new_connection)
         self.clock = pygame.time.Clock()
         self.running = True
         self._lock = threading.RLock()
-        self.__games: dict[int, TicTacToeGame] = {}
         self.__coordinators: dict[int, Address] = {}
 
     def create_controller(lobby_coordinator):
         from tic_tac_toe.controller import LobbyEventHandler
 
         class Controller(LobbyEventHandler):
-            def on_create_game(self, connection: TcpConnection=None):
-                game_id = max(lobby_coordinator.games.keys(), default=0) + 1
+            def on_create_game(self, symbol: Symbol, connection: TcpConnection=None):
+                game_id = max(lobby_coordinator.coordinators.keys(), default=0) + 1
                 coordinator: TicTacToeCoordinator = main_coordinator(game_id, settings=lobby_coordinator.settings)
-                lobby_coordinator.add_game(coordinator)
                 lobby_coordinator.add_coordinator(game_id, coordinator.server.address)
-                # coordinator.tic_tac_toe.add_player(Player(symbol))
-                if connection:
+                if connection is not None:
                     connection.send(serialize({"coordinator": (connection.local_address.ip, coordinator.server.address.port)}))
 
             def on_delete_game(self, game_id: int):
-                lobby_coordinator.remove_game_by_id(game_id)
                 lobby_coordinator.remove_coordinator_by_id(game_id)
-                """ if len(lobby_coordinator.games) == 0:
-                    lobby_coordinator.stop() """
 
-            def on_join_game(self, game_id: int, connection: TcpConnection=None):
-                    if game_id in lobby_coordinator.games.keys():
-                        # lobby_coordinator.games[game_id].tic_tac_toe.add_player(Player(symbol))
-                        if connection:
+            def on_join_game(self, game_id: int, symbol: Symbol, connection: TcpConnection=None):
+                    if game_id in lobby_coordinator.coordinators.keys():
+                        if connection is not None:
                             connection.send(serialize({"coordinator": (connection.local_address.ip, lobby_coordinator.coordinators[game_id].port)}))
 
-            def on_leave_game(self, game_id: int, symbol: Symbol):
-                game_to_leave: TicTacToeGame = lobby_coordinator.game_by_id(game_id)
-                game_to_leave.tic_tac_toe.remove_player_by_symbol(Player(symbol))
-
         return Controller()
-
-    @property
-    def games(self) -> dict[int, TicTacToeGame]:
-        return self.__games
-
-    @games.setter
-    def games(self, games: dict[int, TicTacToeGame]):
-        self.__games = games
-
-    def add_game(self, game: TicTacToeGame):
-        self.games[max(self.games.keys(), default=0) + 1] = game
-
-    def remove_game_by_id(self, id: int):
-        self.__games.pop(id)
-
-    def game_by_id(self, game_id: int) -> TicTacToeGame:
-        assert self.games.__contains__(game_id), f"Game with id {game_id} not present"
-        return self.games.get(game_id)
 
     @property
     def coordinators(self) -> dict[int, Address]:
@@ -116,21 +88,21 @@ class LobbyCoordinator():
     def _on_new_connection(self, event: ServerEvent, connection: TcpConnection, address: Address, error):
         match event:
             case ServerEvent.LISTEN:
-                logger.debug(f"Server listening on port {address.port} at {address.ip}")
+                self.logger.debug(f"Server listening on port {address.port} at {address.ip}")
             case ServerEvent.CONNECT:
-                logger.debug(f"Open ingoing connection from: {address}")
+                self.logger.debug(f"Open ingoing connection from: {address}")
                 connection.callback = self._on_message_received
             case ServerEvent.STOP:
-                logger.debug(f"Stop listening for new connections")
+                self.logger.debug(f"Stop listening for new connections")
             case ServerEvent.ERROR:
-                logger.debug(error)
+                self.logger.debug(error)
 
     def _on_message_received(self, event: ConnectionEvent, payload, connection: TcpConnection, error):
         match event:
             case ConnectionEvent.MESSAGE:
                 if payload is not None:
                     payload = deserialize(payload)
-                    logger.debug(f"Payload: {payload}")
+                    self.logger.debug(f"Payload: {payload}")
                     if LobbyEvent.CREATE_GAME.matches(payload):
                         self.controller.on_create_game(symbol=payload.symbol, connection=connection)
                     elif LobbyEvent.JOIN_GAME.matches(payload):
@@ -142,17 +114,15 @@ class LobbyCoordinator():
                     else:
                         pygame.event.post(payload)
             case ConnectionEvent.CLOSE:
-                logger.debug(f"Connection with coordinator {connection.remote_address} closed")
-                logger.debug(f"{self.coordinators.items()}")
-                # self.controller.post_event(LobbyEvent.DELETE_GAME, game_id=item.popitem()[1])
+                self.logger.debug(f"Connection with coordinator {connection.remote_address} closed")
             case ConnectionEvent.ERROR:
-                logger.debug(error)
-                # self.controller.post_event(LobbyEvent.DELETE_GAME, game_id=item.popitem()[1])
+                self.logger.debug(error)
 
 class TicTacToeCoordinator(TicTacToeGame):
 
-    def __init__(self, game_id: int, settings: Settings = None):
+    def __init__(self, game_id: int, settings: Settings=None):
         settings = settings or Settings()
+        self.logger = logger(f"Coordinator {game_id}")
         super().__init__(settings)
         self.game_id = game_id
         self.server = TcpServer(Address.any_local_port().port, self._on_new_connection)
@@ -228,15 +198,15 @@ class TicTacToeCoordinator(TicTacToeGame):
     def _on_new_connection(self, event: ServerEvent, connection: TcpConnection, address: Address, error):
         match event:
             case ServerEvent.LISTEN:
-                logger.debug(f"Server listening on port {address.port} at {address.ip}")
+                self.logger.debug(f"Server listening on port {address.port} at {address.ip}")
             case ServerEvent.CONNECT:
-                logger.debug(f"Open ingoing connection from: {address}")
+                self.logger.debug(f"Open ingoing connection from: {address}")
                 self.add_peer(address)
                 connection.callback = self._on_message_received
             case ServerEvent.STOP:
-                logger.debug(f"Stop listening for new connections")
+                self.logger.debug(f"Stop listening for new connections")
             case ServerEvent.ERROR:
-                logger.debug(error)
+                self.logger.debug(error)
 
     def _on_message_received(self, event: ConnectionEvent, payload, connection: TcpConnection, error):
         match event:
@@ -245,15 +215,14 @@ class TicTacToeCoordinator(TicTacToeGame):
                     payload = deserialize(payload)
                     assert isinstance(payload, pygame.event.Event), f"Expected {pygame.event.Event}, got {type(payload)}"
                     pygame.event.post(payload)
-                    self._broadcast_to_all_peers(payload)
             case ConnectionEvent.CLOSE:
-                logger.debug(f"Connection with peer {connection.remote_address} closed")
+                self.logger.debug(f"Connection with peer {connection.remote_address} closed")
                 self.remove_peer((connection.remote_address.host, connection.remote_address.port))
                 if self.tic_tac_toe.is_player_lobby_full():
                     self.controller.post_event(ControlEvent.GAME_OVER, symbol=None)
-                self.tic_tac_toe.players = []
+                self.tic_tac_toe.players.clear()
             case ConnectionEvent.ERROR:
-                logger.debug(error)
+                self.logger.debug(error)
                 self.remove_peer((connection.remote_address.host, connection.remote_address.port))
 
 class TicTacToeTerminal(TicTacToeGame):
@@ -262,10 +231,12 @@ class TicTacToeTerminal(TicTacToeGame):
         settings = settings or Settings()
         self.create_game = create_game
         self.game_id = game_id
+        self.logger = logger("Terminal")
         super().__init__(settings)
         self.client = TcpClient(Address(host=self.settings.host or DEFAULT_HOST, port=self.settings.port or DEFAULT_PORT))
         self.symbol = symbol
         self.connected_to_coordinator = False
+        self._lock = threading.RLock()
         self._thread_receiver = threading.Thread(target=self._handle_ingoing_messages, daemon=True)
         self._thread_receiver.start()
 
@@ -277,18 +248,20 @@ class TicTacToeTerminal(TicTacToeGame):
                 TicTacToeInputHandler.__init__(self, tic_tac_toe)
 
             def mouse_clicked(self):
-                pos = self._command.click().__getattribute__("click_point")
-                self.post_event(ControlEvent.MARK_PLACED, cell=self._to_cell(pos), symbol=terminal.symbol)
+                if terminal.tic_tac_toe.is_player_lobby_full():
+                    pos = self._command.click().__getattribute__("click_point")
+                    self.post_event(ControlEvent.MARK_PLACED, cell=self._to_cell(pos), symbol=terminal.symbol)
 
             def post_event(self, event: Event | LobbyEvent | ControlEvent, **kwargs):
                 pygame_event = super().post_event(event, **kwargs)
                 if isinstance(event, LobbyEvent) \
-                    or terminal.connected_to_coordinator and not ControlEvent.TIME_ELAPSED.matches(pygame_event):
+                    or (terminal.connected_to_coordinator and not ControlEvent.TIME_ELAPSED.matches(pygame_event)):
+                    terminal.logger.debug(f"Send event {pygame_event}")
                     terminal.client.send(serialize(pygame_event))
                 return pygame_event
 
             def handle_inputs(self, dt=None):
-                if terminal.tic_tac_toe.is_player_lobby_full():
+                if terminal.connected_to_coordinator:
                     return super().handle_inputs(dt, terminal.symbol)
                 else:
                     for event in pygame.event.get(pygame.KEYDOWN):
@@ -297,12 +270,12 @@ class TicTacToeTerminal(TicTacToeGame):
                     pygame.event.clear(self.INPUT_EVENTS)
 
             def on_player_create_game(self):
-                logger.debug(f"Requesting game creation from lobby")
-                self.post_event(LobbyEvent.CREATE_GAME)
+                terminal.logger.debug(f"Requesting game creation from lobby")
+                self.post_event(LobbyEvent.CREATE_GAME, symbol=terminal.symbol)
 
             def on_player_join_game(self, game_id: int):
-                logger.debug(f"Requesting join game {game_id} from lobby")
-                self.post_event(LobbyEvent.JOIN_GAME, game_id=game_id)
+                terminal.logger.debug(f"Requesting join game {game_id} from lobby")
+                self.post_event(LobbyEvent.JOIN_GAME, game_id=game_id, symbol=terminal.symbol)
 
             def on_change_turn(self, tic_tac_toe: TicTacToe):
                 tic_tac_toe.change_turn()
@@ -335,15 +308,19 @@ class TicTacToeTerminal(TicTacToeGame):
                     message = deserialize(message)
                     if isinstance(message, dict) and "coordinator" in message:
                         coord_address = Address(message["coordinator"][0], message["coordinator"][1])
-                        self.client.close()
-                        self.client = TcpClient(coord_address)
-                        self.connected_to_coordinator = True
+                        self.logger.debug(f"Received coordinator address {coord_address}")
+                        with self._lock:
+                            old_client = self.client
+                            old_client.close()
+                            self.client = TcpClient(coord_address)
+                            self.connected_to_coordinator = True
+                        self.controller.on_player_join(self.tic_tac_toe, symbol=self.symbol)
                         self.controller.post_event(ControlEvent.PLAYER_JOIN, symbol=self.symbol)
                     elif isinstance(message, pygame.event.Event):
                         pygame.event.post(message)
             except ConnectionResetError:
                 if self.running:
-                    logger.debug(f"Coordinator stopped")
+                    self.logger.debug(f"Coordinator stopped")
                     self.controller.on_game_over(self.tic_tac_toe, None)
 
     def before_run(self):
@@ -352,7 +329,6 @@ class TicTacToeTerminal(TicTacToeGame):
             self.controller.post_event(ControlEvent.PLAYER_CREATE_GAME)
         elif self.game_id is not None:
             self.controller.post_event(ControlEvent.PLAYER_JOIN_GAME, game_id=self.game_id)
-        self.controller.post_event(ControlEvent.PLAYER_JOIN, symbol=self.symbol)
 
     def after_run(self):
         super().after_run()

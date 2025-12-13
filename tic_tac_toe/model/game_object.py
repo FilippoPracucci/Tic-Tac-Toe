@@ -28,6 +28,7 @@ class GameObject(Sized, Positioned):
         self._size = Vector2(size)
         self._position = Vector2(position) if position is not None else Vector2()
         self.name = name or self.__class__.__name__.lower()
+        self.logger = logger("GameObject")
 
     def __eq__(self, other):
         return isinstance(other, type(self)) and \
@@ -53,7 +54,7 @@ class GameObject(Sized, Positioned):
         old_value = self._size
         self._size = Vector2(value)
         if old_value is not None and old_value != self._size:
-            logger.debug(f"{self} resized: {old_value} -> {self._size}")
+            self.logger.debug(f"{self} resized: {old_value} -> {self._size}")
 
     @property
     def position(self) -> Vector2:
@@ -64,7 +65,7 @@ class GameObject(Sized, Positioned):
         old_value = self._position
         self._position = Vector2(value)
         if old_value is not None and old_value != self._position:
-            logger.debug(f"{self} moves: {old_value} -> {self._position}")
+            self.logger.debug(f"{self} moves: {old_value} -> {self._position}")
 
     def override(self, other: 'GameObject'):
         assert isinstance(other, type(self)) and other.name == self.name, f"Invalid override: {other} -> {self}"

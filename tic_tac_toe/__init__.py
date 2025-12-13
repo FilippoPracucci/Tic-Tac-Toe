@@ -8,6 +8,7 @@ from .controller.mark_utils import *
 class TicTacToeGame:
     def __init__(self, settings: Settings=None, players=[]):
         self.settings = settings or Settings()
+        self.logger = logger("TicTacToeGame")
         self.tic_tac_toe = TicTacToe(
             size=self.settings.size,
             dim=self.settings.dim,
@@ -21,7 +22,7 @@ class TicTacToeGame:
         self.running = True
         self.controller = self.create_controller()
         if self.settings.debug:
-            logger.setLevel(logging.INFO)
+            self.logger.setLevel(logging.INFO)
 
     @property
     def turn(self) -> Player:

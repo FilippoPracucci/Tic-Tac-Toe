@@ -2,4 +2,5 @@ import logging
 
 
 logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger('TicTacToe')
+def logger(name: str) -> logging.Logger:
+    return logging.getLogger(f"[{name}]")
