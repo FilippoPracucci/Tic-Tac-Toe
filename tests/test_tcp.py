@@ -26,7 +26,7 @@ class BaseTcpTest(unittest.TestCase):
             cls.server.close()
 
     def _wait_connection_put(self):
-        while (self.server.connections.__len__().__eq__(self.size_before)):
+        while (len(self.server.connections) == self.size_before):
             ...
 
     def assertIsLocalEndpoint(self, address: Address):
@@ -45,7 +45,7 @@ class TestTcpClientAndServer(BaseTcpTest):
             self.assertIsLocalEndpoint(client.local_address)
 
     def test_communication(self):
-        self.size_before = self.server.connections.__len__()
+        self.size_before = len(self.server.connections)
         client1 = TcpClient(self.server_address)
         with client1:
             client1.send(self.message1)
@@ -54,7 +54,7 @@ class TestTcpClientAndServer(BaseTcpTest):
             with session1:
                 message = session1.receive()
                 self.assertEqual(self.message1, message)
-            self.size_before = self.server.connections.__len__()
+            self.size_before = len(self.server.connections)
             client2 = TcpClient(self.server_address)
             with client2:
                 client2.send(self.message2)
@@ -66,7 +66,7 @@ class TestTcpClientAndServer(BaseTcpTest):
 
 class TestTcpServerListening(BaseTcpTest):
     def test_server_listening(self):
-        self.size_before = self.server.connections.__len__()
+        self.size_before = len(self.server.connections)
         client = TcpClient(self.server_address)
         with client:
             client.send(self.message1)

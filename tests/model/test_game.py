@@ -54,14 +54,14 @@ class TestTicTacToe(TestCase):
         mark = Mark(cell, Symbol.CROSS)
         self.assertTrue(self.tictactoe.place_mark(mark))
         self.assertFalse(self.tictactoe.place_mark(mark))
-        self.assertEqual(1, self.tictactoe.marks.__len__())
+        self.assertEqual(1, len(self.tictactoe.marks))
         self.assertTrue(self.tictactoe.has_mark(cell))
 
     def test_remove_mark(self):
         cell = Cell(0, 0)
         self.tictactoe.place_mark(Mark(cell, Symbol.CROSS))
         self.tictactoe.remove_mark(cell)
-        self.assertEqual(0, self.tictactoe.marks.__len__())
+        self.assertEqual(0, len(self.tictactoe.marks))
         with self.assertRaises(ValueError):
             self.tictactoe.remove_mark(cell)
 
