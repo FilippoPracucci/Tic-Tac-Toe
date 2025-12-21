@@ -1,3 +1,4 @@
+from multiprocessing import Process, Pipe
 from typing import Optional
 from pygame.event import Event
 import pygame
@@ -6,7 +7,7 @@ from tic_tac_toe import TicTacToeGame
 from tic_tac_toe.remote import *
 from tic_tac_toe.utils import Settings
 from tic_tac_toe.model import TicTacToe
-from tic_tac_toe.model.game_object import Player, Symbol
+from tic_tac_toe.model.game_object import Symbol
 from tic_tac_toe.controller import LobbyEvent, ControlEvent
 from tic_tac_toe.remote.tcp import TcpClient, TcpConnection, TcpServer, Address
 from tic_tac_toe.remote.presentation import serialize, deserialize
@@ -33,19 +34,28 @@ class LobbyCoordinator():
         from tic_tac_toe.controller import LobbyEventHandler
 
         class Controller(LobbyEventHandler):
-            def on_create_game(self, symbol: Symbol, connection: TcpConnection=None):
+            def on_create_game(self, **kwargs):
                 game_id = max(lobby_coordinator.coordinators.keys(), default=0) + 1
-                coordinator: TicTacToeCoordinator = main_coordinator(game_id, settings=lobby_coordinator.settings)
-                lobby_coordinator.add_coordinator(game_id, coordinator.server.address)
-                if connection is not None:
-                    connection.send(serialize({"coordinator": (connection.local_address.ip, coordinator.server.address.port)}))
+                lobby_connection, coordinator_connection = Pipe()
+                process = Process(
+                    target=main_coordinator,
+                    args=(game_id, coordinator_connection, lobby_coordinator.settings),
+                    daemon=True
+                )
+                process.start()
+                coordinator_address = lobby_connection.recv()
+                lobby_coordinator.add_coordinator(game_id, coordinator_address)
+                if "connection" in kwargs:
+                    connection: TcpConnection = kwargs["connection"]
+                    connection.send(serialize({"coordinator": (connection.local_address.ip, coordinator_address.port)}))
 
             def on_delete_game(self, game_id: int):
                 lobby_coordinator.remove_coordinator_by_id(game_id)
 
-            def on_join_game(self, game_id: int, symbol: Symbol, connection: TcpConnection=None):
+            def on_join_game(self, game_id: int, **kwargs):
                     if game_id in lobby_coordinator.coordinators.keys():
-                        if connection is not None:
+                        if "connection" in kwargs:
+                            connection: TcpConnection = kwargs["connection"]
                             connection.send(serialize({"coordinator": (connection.local_address.ip, lobby_coordinator.coordinators[game_id].port)}))
 
         return Controller()
@@ -150,7 +160,6 @@ class TicTacToeCoordinator(TicTacToeGame):
             def on_player_leave(self, tic_tac_toe: TicTacToe, symbol: Symbol):
                 if not tic_tac_toe.is_player_lobby_full():
                     super().on_player_leave(tic_tac_toe, symbol=symbol)
-                    self.post_event(LobbyEvent.LEAVE_GAME, game_id=coordinator.game_id, symbol=symbol)
                 else:
                     self.on_game_over(tic_tac_toe, symbol=None)
 
@@ -314,7 +323,6 @@ class TicTacToeTerminal(TicTacToeGame):
                             old_client.close()
                             self.client = TcpClient(coord_address)
                             self.connected_to_coordinator = True
-                        self.controller.on_player_join(self.tic_tac_toe, symbol=self.symbol)
                         self.controller.post_event(ControlEvent.PLAYER_JOIN, symbol=self.symbol)
                     elif isinstance(message, pygame.event.Event):
                         pygame.event.post(message)
@@ -338,10 +346,11 @@ class TicTacToeTerminal(TicTacToeGame):
 def main_lobby(settings: Settings=None):
     LobbyCoordinator(settings).run()
 
-def main_coordinator(game_id: int, settings: Settings=None) -> TicTacToeCoordinator:
+def main_coordinator(game_id: int, connection: Connection, settings: Settings=None):
     coordinator = TicTacToeCoordinator(game_id, settings)
-    threading.Thread(target=coordinator.run, daemon=True).start()
-    return coordinator
+    connection.send(coordinator.server.address)
+    connection.close()
+    coordinator.run()
 
 def main_terminal(symbol: Symbol, creation: bool=False, game_id: Optional[int]=None, settings: Settings=None):
     TicTacToeTerminal(symbol, creation, game_id, settings).run()

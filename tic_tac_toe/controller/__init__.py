@@ -150,13 +150,13 @@ class LobbyEventHandler:
     def post_event(self, event: pygame.event.Event | LobbyEvent, **kwargs):
         return post_event(event, **kwargs)
 
-    def on_create_game(self, symbol: Symbol, connection):
+    def on_create_game(self, **kwargs):
         pass
 
     def on_delete_game(self, game_id: int):
         pass
 
-    def on_join_game(self, game_id: int, symbol: Symbol, connection):
+    def on_join_game(self, game_id: int, **kwargs):
         pass
 
 class EventHandler:
