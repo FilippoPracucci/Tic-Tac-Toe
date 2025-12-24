@@ -53,8 +53,8 @@ class TicTacToe(Sized):
             self._players.append(player)
 
     def add_player(self, player: Player):
-        assert isinstance(player, Player), "The player provided has not a valid symbol"
-        assert len(list(filter(lambda p: p == player, self.players))) == 0, "The player's already joined the game"
+        if len(list(filter(lambda p: p.symbol == player.symbol, self.players))) != 0:
+            raise ValueError(f"A player with symbol '{player.symbol}' has already joined the game!")
         self._players.append(player)
         self.logger.debug(f"Add {player}")
 

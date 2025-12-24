@@ -23,7 +23,7 @@ class TestTicTacToe(TestCase):
     def test_add_player(self):
         self.tictactoe.add_player(Player(Symbol.CROSS))
         self.assertEqual([Player(Symbol.NOUGHT), Player(Symbol.CROSS)], self.tictactoe.players)
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             self.tictactoe.add_player(Player(Symbol.CROSS))
 
     def test_remove_player(self):
