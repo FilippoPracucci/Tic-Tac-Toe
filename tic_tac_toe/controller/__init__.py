@@ -192,7 +192,7 @@ class EventHandler:
     def on_player_join_game(self, game_id: int):
         pass
 
-    def on_player_join(self, tic_tac_toe: TicTacToe, symbol: Symbol):
+    def on_player_join(self, tic_tac_toe: TicTacToe, symbol: Symbol, **kwargs):
         pass
 
     def on_player_leave(self, tic_tac_toe: TicTacToe, symbol: Symbol):
