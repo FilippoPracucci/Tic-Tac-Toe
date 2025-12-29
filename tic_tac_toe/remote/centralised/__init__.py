@@ -1,5 +1,5 @@
 from multiprocessing import Process, Pipe
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 from pygame.event import Event
 import pygame
 from tic_tac_toe.log import logger
@@ -172,6 +172,14 @@ class TicTacToeCoordinator(TicTacToeGame):
 
             def handle_inputs(self, dt=None):
                 self.time_elapsed(dt)
+
+            def handle_events(self):
+                game_over_events: List[Event] = pygame.event.get(ControlEvent.GAME_OVER.value)
+                if len(game_over_events) > 0:
+                    event = game_over_events.pop()
+                    coordinator._broadcast_to_all_peers(event)
+                    self.on_game_over(tic_tac_toe=self._tic_tac_toe, symbol=event.symbol)
+                super().handle_events()
 
         return Controller(coordinator.tic_tac_toe)
 
