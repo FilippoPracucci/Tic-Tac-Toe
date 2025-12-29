@@ -163,10 +163,7 @@ class TicTacToeCoordinator(TicTacToeGame):
                         connection.send(serialize({"error": str(exception)}))
 
             def on_player_leave(self, tic_tac_toe: TicTacToe, symbol: Symbol):
-                if tic_tac_toe.is_player_lobby_full():
-                    super().on_player_leave(tic_tac_toe, symbol=symbol)
-                else:
-                    self.on_game_over(tic_tac_toe, symbol=None)
+                self.on_game_over(tic_tac_toe, symbol=None)
 
             def on_game_over(self, tic_tac_toe: TicTacToe, symbol: Symbol):
                 super().on_game_over(tic_tac_toe, symbol)
@@ -230,6 +227,8 @@ class TicTacToeCoordinator(TicTacToeGame):
                     assert isinstance(payload, pygame.event.Event), f"Expected {pygame.event.Event}, got {type(payload)}"
                     if ControlEvent.PLAYER_JOIN.matches(payload):
                         payload.connection = connection
+                    elif ControlEvent.PLAYER_LEAVE.matches(payload):
+                        self._broadcast_to_all_peers(payload)
                     pygame.event.post(payload)
             case ConnectionEvent.CLOSE:
                 self.logger.debug(f"Connection with peer {connection.remote_address} closed")
@@ -304,7 +303,10 @@ class TicTacToeTerminal(TicTacToeGame):
                     tic_tac_toe.override(status)
 
             def on_player_leave(self, tic_tac_toe: TicTacToe, symbol: Symbol):
-                print(f"Player '{symbol.value}' has left")
+                if symbol != terminal.symbol:
+                    print(f"You won because player '{symbol.value}' has left!")
+                else:
+                    print(f"You lost because you left the game!")
                 terminal.stop()
 
             def on_game_over(self, tic_tac_toe: TicTacToe, symbol: Symbol):
