@@ -313,7 +313,7 @@ class TicTacToeTerminal(TicTacToeGame):
             def on_player_leave(self, tic_tac_toe: TicTacToe, symbol: Symbol):
                 if symbol != terminal.symbol:
                     print(f"You won because player '{symbol.value}' has left!")
-                else:
+                elif tic_tac_toe.is_player_lobby_full():
                     print(f"You lost because you left the game!")
                 terminal.stop()
 
