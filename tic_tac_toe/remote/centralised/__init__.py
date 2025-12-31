@@ -1,3 +1,4 @@
+from datetime import datetime
 from multiprocessing import Process, Pipe
 from typing import Dict, List, Optional
 from pygame.event import Event
@@ -232,12 +233,15 @@ class TicTacToeCoordinator(TicTacToeGame):
             case ConnectionEvent.MESSAGE:
                 if payload:
                     payload = deserialize(payload)
-                    assert isinstance(payload, pygame.event.Event), f"Expected {pygame.event.Event}, got {type(payload)}"
-                    if ControlEvent.PLAYER_JOIN.matches(payload):
-                        payload.connection = connection
-                    elif ControlEvent.PLAYER_LEAVE.matches(payload):
+                    if isinstance(payload, pygame.event.Event):
+                        if ControlEvent.PLAYER_JOIN.matches(payload):
+                            payload.connection = connection
+                        elif ControlEvent.PLAYER_LEAVE.matches(payload):
+                            self._broadcast_to_all_peers(payload)
+                        pygame.event.post(payload)
+                    elif isinstance(payload, str):
                         self._broadcast_to_all_peers(payload)
-                    pygame.event.post(payload)
+                        self.logger.debug(f"Received message: {payload}")
             case ConnectionEvent.CLOSE:
                 self.logger.debug(f"Connection with peer {connection.remote_address} closed")
                 self.remove_peer((connection.remote_address.host, connection.remote_address.port))
@@ -262,6 +266,8 @@ class TicTacToeTerminal(TicTacToeGame):
         self._lock = threading.RLock()
         self._thread_receiver = threading.Thread(target=self._handle_ingoing_messages, daemon=True)
         self._thread_receiver.start()
+        self._thread_sender = threading.Thread(target=self._send_message, daemon=True)
+        self._thread_sender.start()
 
     def create_controller(terminal):
         from tic_tac_toe.controller.local import TicTacToeInputHandler, EventHandler
@@ -336,6 +342,8 @@ class TicTacToeTerminal(TicTacToeGame):
                         self.__handle_dict_message(message)
                     elif isinstance(message, pygame.event.Event):
                         pygame.event.post(message)
+                    elif isinstance(message, str):
+                        print(message)
             except ConnectionResetError:
                 if self.running:
                     self.logger.debug(f"Coordinator stopped")
@@ -365,6 +373,20 @@ class TicTacToeTerminal(TicTacToeGame):
     def after_run(self):
         super().after_run()
         self.client.close()
+
+    def _send_message(self):
+        try:
+            msg = input()
+            self.logger.debug(f"Send {msg} to the opponent")
+            if msg is not None:
+                self.client.send(serialize(self.message(msg, f"Player '{self.symbol.value}'")))
+        except (EOFError, KeyboardInterrupt):
+            self.logger.debug("Error while sending the message")
+
+    def message(self, text: str, sender: str, timestamp: datetime=None):
+        if timestamp is None:
+            timestamp = datetime.now()
+        return f"[{timestamp.isoformat()}] {sender}: {text.strip()}"
 
 
 def main_lobby(settings: Settings=None):
