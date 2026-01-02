@@ -1,6 +1,6 @@
 from datetime import datetime
 from multiprocessing import Process, Pipe
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from pygame.event import Event
 import pygame
 from tic_tac_toe.log import logger
@@ -130,15 +130,17 @@ class LobbyCoordinator():
         match event:
             case ConnectionEvent.MESSAGE:
                 if payload is not None:
-                    payload = deserialize(payload)
-                    self.logger.debug(f"Payload: {payload}")
-                    if LobbyEvent.CREATE_GAME.matches(payload) or LobbyEvent.JOIN_GAME.matches(payload):
-                        payload.connection = connection
-                    pygame.event.post(payload)
+                    self.__handle_message(deserialize(payload))
             case ConnectionEvent.CLOSE:
                 self.logger.debug(f"Connection with coordinator {connection.remote_address} closed")
             case ConnectionEvent.ERROR:
                 self.logger.debug(error)
+
+    def __handle_message(self, message: Any, **kwargs):
+        self.logger.debug(f"Message: {message}")
+        if LobbyEvent.CREATE_GAME.matches(message) or LobbyEvent.JOIN_GAME.matches(message):
+            message.connection = kwargs["connection"]
+        pygame.event.post(message)
 
 class TicTacToeCoordinator(TicTacToeGame):
 
@@ -246,16 +248,7 @@ class TicTacToeCoordinator(TicTacToeGame):
         match event:
             case ConnectionEvent.MESSAGE:
                 if payload:
-                    payload = deserialize(payload)
-                    if isinstance(payload, pygame.event.Event):
-                        if ControlEvent.PLAYER_JOIN.matches(payload):
-                            payload.connection = connection
-                        elif ControlEvent.PLAYER_LEAVE.matches(payload):
-                            self._broadcast_to_all_peers(payload)
-                        pygame.event.post(payload)
-                    elif isinstance(payload, str):
-                        self._broadcast_to_all_peers(payload)
-                        self.logger.debug(f"Received message: {payload}")
+                    self.__handle_message(deserialize(payload), connection=connection)
             case ConnectionEvent.CLOSE:
                 self.logger.debug(f"Connection with peer {connection.remote_address} closed")
                 self.remove_peer((connection.remote_address.host, connection.remote_address.port))
@@ -265,6 +258,17 @@ class TicTacToeCoordinator(TicTacToeGame):
             case ConnectionEvent.ERROR:
                 self.logger.debug(error)
                 self.remove_peer((connection.remote_address.host, connection.remote_address.port))
+
+    def __handle_message(self, message: Any, **kwargs):
+        if isinstance(message, pygame.event.Event):
+            if ControlEvent.PLAYER_JOIN.matches(message):
+                message.connection = kwargs["connection"]
+            elif ControlEvent.PLAYER_LEAVE.matches(message):
+                self._broadcast_to_all_peers(message)
+            pygame.event.post(message)
+        elif isinstance(message, str):
+            self._broadcast_to_all_peers(message)
+            self.logger.debug(f"Received message: {message}")
 
 class TicTacToeTerminal(TicTacToeGame):
 
@@ -351,17 +355,19 @@ class TicTacToeTerminal(TicTacToeGame):
             try:
                 message = self.client.receive()
                 if message is not None:
-                    message = deserialize(message)
-                    if isinstance(message, dict):
-                        self.__handle_dict_message(message)
-                    elif isinstance(message, pygame.event.Event):
-                        pygame.event.post(message)
-                    elif isinstance(message, str):
-                        print(message)
+                    self.__handle_message(deserialize(message))
             except ConnectionResetError:
                 if self.running:
                     self.logger.debug(f"Coordinator stopped")
                     self.controller.on_game_over(self.tic_tac_toe, None)
+
+    def __handle_message(self, message: Any):
+        if isinstance(message, pygame.event.Event):
+            pygame.event.post(message)
+        elif isinstance(message, dict):
+            self.__handle_dict_message(message)
+        elif isinstance(message, str):
+            print(message)
 
     def __handle_dict_message(self, message: Dict):
         if "error" in message:

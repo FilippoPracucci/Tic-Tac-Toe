@@ -11,10 +11,12 @@ class TicTacToeInputHandler(InputHandler):
     
     def handle_inputs(self, dt=None, symbol: Symbol=None):
         for event in pygame.event.get(self.INPUT_EVENTS):
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                self.mouse_clicked()
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                self.post_event(ControlEvent.PLAYER_LEAVE, symbol=symbol)
+            match (event.type):
+                case pygame.MOUSEBUTTONDOWN:
+                    self.mouse_clicked()
+                case pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        self.post_event(ControlEvent.PLAYER_LEAVE, symbol=symbol)
         if dt is not None:
             self.time_elapsed(dt)
 
