@@ -30,6 +30,7 @@ class LobbyCoordinator():
         self.running = True
         self._lock = threading.RLock()
         self.__coordinators: dict[int, Address] = {}
+        self.__processes: dict[int, Process] = {}
 
     def create_controller(lobby_coordinator):
         from tic_tac_toe.controller import LobbyEventHandler
@@ -38,12 +39,14 @@ class LobbyCoordinator():
             def on_create_game(self, **kwargs):
                 game_id = max(lobby_coordinator.coordinators.keys(), default=0) + 1
                 lobby_connection, coordinator_connection = Pipe()
-                Process(
+                process: Process = Process(
                     target=main_coordinator,
                     args=(game_id, coordinator_connection, lobby_coordinator.settings),
                     daemon=True
-                ).start()
+                )
+                process.start()
                 coordinator_address = lobby_connection.recv()
+                lobby_coordinator.add_process(game_id, process)
                 lobby_coordinator.add_coordinator(game_id, coordinator_address)
                 if "connection" in kwargs:
                     connection: TcpConnection = kwargs["connection"]
@@ -51,6 +54,7 @@ class LobbyCoordinator():
 
             def on_delete_game(self, game_id: int):
                 lobby_coordinator.remove_coordinator_by_id(game_id)
+                lobby_coordinator.kill_process_by_id(game_id)
 
             def on_join_game(self, game_id: int, **kwargs):
                 connection: TcpConnection = kwargs["connection"] if "connection" in kwargs else None
@@ -82,6 +86,16 @@ class LobbyCoordinator():
     def remove_coordinator_by_id(self, game_id: int):
         with self._lock:
             self.__coordinators.pop(game_id)
+
+    def add_process(self, game_id: int, process: Process):
+        with self._lock:
+            self.__processes.update({game_id: process})
+
+    def kill_process_by_id(self, game_id: int):
+        with self._lock:
+            process: Process = self.__processes.pop(game_id, default=None)
+            if process is not None and process.is_alive():
+                process.kill()
 
     def before_run(self):
         pygame.init()
@@ -318,7 +332,7 @@ class TicTacToeTerminal(TicTacToeGame):
 
             def on_player_leave(self, tic_tac_toe: TicTacToe, symbol: Symbol):
                 if symbol != terminal.symbol:
-                    print(f"You won because player '{symbol.value}' has left!")
+                    print(f"You won because player '{symbol.value}' has left the game!")
                 elif tic_tac_toe.is_player_lobby_full():
                     print(f"You lost because you left the game!")
                 terminal.stop()
