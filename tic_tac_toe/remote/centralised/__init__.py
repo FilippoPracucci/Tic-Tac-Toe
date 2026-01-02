@@ -375,13 +375,14 @@ class TicTacToeTerminal(TicTacToeGame):
         self.client.close()
 
     def _send_message(self):
-        try:
-            msg = input()
-            self.logger.debug(f"Send {msg} to the opponent")
-            if msg is not None:
-                self.client.send(serialize(self.message(msg, f"Player '{self.symbol.value}'")))
-        except (EOFError, KeyboardInterrupt):
-            self.logger.debug("Error while sending the message")
+        while self.running:
+            try:
+                msg = input()
+                self.logger.debug(f"Send {msg} to the opponent")
+                if msg is not None:
+                    self.client.send(serialize(self.message(msg, f"Player '{self.symbol.value}'")))
+            except (EOFError, KeyboardInterrupt):
+                self.logger.debug("Error while sending the message")
 
     def message(self, text: str, sender: str, timestamp: datetime=None):
         if timestamp is None:
