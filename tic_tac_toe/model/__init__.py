@@ -2,9 +2,10 @@ import random
 from .grid import *
 from .game_object import *
 from ..utils import *
+from typing import List, Any
 
 class TicTacToe(Sized):
-    def __init__(self, size, dim=Settings.dim, players=[]):
+    def __init__(self, size, dim: int=Settings.dim, players: List[Player]=[]):
         self.size = Vector2(size)
         self.config = Config(self.size.x/dim, self.size.y/dim)
         self.players = players
@@ -15,7 +16,7 @@ class TicTacToe(Sized):
         self.time = 0
         self.logger = logger("TicTacToe")
 
-    def __eq__(self, value):
+    def __eq__(self, value: 'TicTacToe'):
         return isinstance(value, TicTacToe) and \
             self.size == value.size and \
             self.config == value.config and \
@@ -42,11 +43,11 @@ class TicTacToe(Sized):
                 f')>')
 
     @property
-    def players(self) -> list[Player]:
+    def players(self) -> List[Player]:
         return list(self._players)
     
     @players.setter
-    def players(self, players: list[Player]) -> list[Player]:
+    def players(self, players: List[Player]) -> List[Player]:
         self._players = []
         for player in players:
             assert isinstance(player, Player), f"Invalid symbol for a player: {player.symbol}"
@@ -58,7 +59,7 @@ class TicTacToe(Sized):
         self._players.append(player)
         self.logger.debug(f"Add {player}")
 
-    def player(self, player: Player):
+    def player(self, player: Player) -> Player:
         if player not in self._players:
             raise ValueError(f"No such a player with {player.symbol}")
         return list(filter(lambda p: p == player, self._players))[0]
@@ -73,11 +74,11 @@ class TicTacToe(Sized):
         return len(self.players) == Settings.lobby_size
 
     @property
-    def marks(self) -> list[Mark]:
+    def marks(self) -> List[Mark]:
         return sorted(self._marks, key=lambda m: (m.cell.x, m.cell.y))
     
     @marks.setter
-    def marks(self, marks) -> list[Mark]:
+    def marks(self, marks) -> List[Mark]:
         self._marks = []
         for mark in marks:
             assert isinstance(mark, Mark), f"Invalid mark: {mark}"
@@ -114,10 +115,10 @@ class TicTacToe(Sized):
             mark = turn_marks.__getitem__(r)
             self.remove_mark(mark.cell)
 
-    def get_noughts(self) -> list[Mark]:
+    def get_noughts(self) -> List[Mark]:
         return list(filter(lambda m: m.symbol is Symbol.NOUGHT, self.marks))
 
-    def get_crosses(self) -> list[Mark]:
+    def get_crosses(self) -> List[Mark]:
         return list(filter(lambda m: m.symbol is Symbol.CROSS, self.marks))
 
     def check_game_end(self) -> Player:
@@ -185,21 +186,21 @@ class TicTacToe(Sized):
             if not other_players.__contains__(player):
                 self.remove_player_by_symbol(player.symbol)
 
-    def _get_diagonal(self) -> list[Cell]:
+    def _get_diagonal(self) -> List[Cell]:
         return list(filter(lambda c: c.x == c.y, self.grid.cells))
 
-    def _get_antidiagonal(self) -> list[Cell]:
+    def _get_antidiagonal(self) -> List[Cell]:
         reversed_cells = self._get_rows().copy()
         return [reversed_cells[i][-(i+1)] for i in range(len(reversed_cells))]
 
-    def _get_columns(self) -> list[list[Cell]]:
+    def _get_columns(self) -> List[List[Cell]]:
         res = list()
         for i in range(self.grid.dim):
             col = list(filter(lambda c: c.x == i, self.grid.cells))
             res.append(col)
         return res
 
-    def _get_rows(self) -> list[list[Cell]]:
+    def _get_rows(self) -> List[List[Cell]]:
         res = list()
         for j in range(self.grid.dim):
             row = list(filter(lambda c: c.y == j, self.grid.cells))

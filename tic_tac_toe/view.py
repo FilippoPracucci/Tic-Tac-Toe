@@ -1,5 +1,4 @@
 import pygame
-
 from pygame import draw, Surface
 from tic_tac_toe.model import TicTacToe, Symbol, Mark
 
@@ -25,7 +24,7 @@ class ScreenTicTacToeView(TicTacToeView):
         super().__init__(tic_tac_toe)
         self._screen = screen or pygame.display.set_mode(tic_tac_toe.size)
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str):
         if not name.startswith("draw_"):
             raise AttributeError(f"{type(self).__name__} has no attribute '{name}'")
         name = name[5:]
@@ -57,7 +56,7 @@ class ScreenTicTacToeView(TicTacToeView):
         self._draw_line(x, y, inverted=False)
         self._draw_line(x, y, inverted=True)
 
-    def _draw_line(self, x, y, inverted: bool):
+    def _draw_line(self, x: float, y: float, inverted: bool):
         point_plus_minus = 50
         if not inverted:
             line_points = [(x-point_plus_minus, y-point_plus_minus), (x+point_plus_minus, y+point_plus_minus)]

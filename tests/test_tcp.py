@@ -1,10 +1,10 @@
-import unittest
+from unittest import TestCase
 from tic_tac_toe.remote.tcp import *
 from typing import Optional
 from tic_tac_toe.log import logging
 
 
-class BaseTcpTest(unittest.TestCase):
+class BaseTcpTest(TestCase):
     TEST_PORT = 54321
     server_address = Address('localhost', TEST_PORT)
     message1 = "Hello, World!"
@@ -13,15 +13,15 @@ class BaseTcpTest(unittest.TestCase):
     size_before = 0
 
     @classmethod
-    def server_callback(cls, event, connection=None, address=None, error=None):
+    def server_callback(cls, event: str, connection: Connection=None, address: Address=None, error: Exception=None):
         logging.debug(f"Server Event: {event}, Address: {address}, Error: {error}")
 
     @classmethod
-    def setUpClass(cls) -> None:
+    def setUpClass(cls):
         cls.server = TcpServer(cls.TEST_PORT, callback=cls.server_callback)
 
     @classmethod
-    def tearDownClass(cls) -> None:
+    def tearDownClass(cls):
         if cls.server is not None:
             cls.server.close()
 

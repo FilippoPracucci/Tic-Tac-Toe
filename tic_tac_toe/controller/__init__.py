@@ -3,6 +3,7 @@ from ..model import *
 from dataclasses import dataclass, field
 from enum import Enum
 from tic_tac_toe.model import Symbol
+from typing import Set
 
 class LobbyEvent(Enum):
     CREATE_GAME = pygame.event.custom_type()
@@ -10,11 +11,11 @@ class LobbyEvent(Enum):
     JOIN_GAME = pygame.event.custom_type()
 
     @classmethod
-    def all(cls) -> set['LobbyEvent']:
+    def all(cls) -> Set['LobbyEvent']:
         return set(cls.__members__.values())
 
     @classmethod
-    def all_types(cls) -> set[int]:
+    def all_types(cls) -> Set[int]:
         return {event.value for event in cls.all()}
 
     @classmethod
@@ -49,11 +50,11 @@ class ControlEvent(Enum):
     TIME_ELAPSED = pygame.event.custom_type()
 
     @classmethod
-    def all(cls) -> set['ControlEvent']:
+    def all(cls) -> Set['ControlEvent']:
         return set(cls.__members__.values())
 
     @classmethod
-    def all_types(cls) -> set[int]:
+    def all_types(cls) -> Set[int]:
         return {event.value for event in cls.all()}
 
     @classmethod
@@ -82,7 +83,7 @@ class PlayerAction(Enum):
     QUIT = 2
 
     @classmethod
-    def all(cls) -> set['PlayerAction']:
+    def all(cls) -> Set['PlayerAction']:
         return set(cls.__members__.values())
 
 @dataclass(frozen=True)
@@ -97,10 +98,10 @@ class ActionMap:
                 for name in self.__annotations__ if name not in ('name', 'click_point')}
 
     @classmethod
-    def click(cls):
+    def click(cls) -> 'ActionMap':
         return cls(pygame.MOUSEBUTTONDOWN, click_point=Vector2(pygame.mouse.get_pos()), name="click")
 
-def create_event(event: pygame.event.Event | ControlEvent, **kwargs):
+def create_event(event: pygame.event.Event | ControlEvent, **kwargs) -> pygame.event.Event:
     if isinstance(event, (LobbyEvent, ControlEvent)):
         event = pygame.event.Event(event.value, **kwargs)
     elif isinstance(event, pygame.event.Event) and event.dict != kwargs:
@@ -109,7 +110,7 @@ def create_event(event: pygame.event.Event | ControlEvent, **kwargs):
         event = pygame.event.Event(event.type, data)
     return event
 
-def post_event(event: pygame.event.Event | LobbyEvent | ControlEvent, **kwargs):
+def post_event(event: pygame.event.Event | LobbyEvent | ControlEvent, **kwargs) -> pygame.event.Event:
     event = create_event(event, **kwargs)
     pygame.event.post(event)
     return event
@@ -117,10 +118,10 @@ def post_event(event: pygame.event.Event | LobbyEvent | ControlEvent, **kwargs):
 class InputHandler:
     INPUT_EVENTS = (pygame.MOUSEBUTTONDOWN, pygame.KEYDOWN)
 
-    def create_event(self, event: pygame.event.Event | LobbyEvent | ControlEvent, **kwargs):
+    def create_event(self, event: pygame.event.Event | LobbyEvent | ControlEvent, **kwargs) -> pygame.event.Event:
         return create_event(event, **kwargs)
 
-    def post_event(self, event: pygame.event.Event | LobbyEvent | ControlEvent, **kwargs):
+    def post_event(self, event: pygame.event.Event | LobbyEvent | ControlEvent, **kwargs) -> pygame.event.Event:
         return post_event(event, **kwargs)
 
     def mouse_clicked(self):
@@ -144,10 +145,10 @@ class LobbyEventHandler:
             elif LobbyEvent.JOIN_GAME.matches(event):
                 self.on_join_game(**event.dict)
 
-    def create_event(self, event: pygame.event.Event | LobbyEvent, **kwargs):
+    def create_event(self, event: pygame.event.Event | LobbyEvent, **kwargs) -> pygame.event.Event:
         return create_event(event, **kwargs)
 
-    def post_event(self, event: pygame.event.Event | LobbyEvent, **kwargs):
+    def post_event(self, event: pygame.event.Event | LobbyEvent, **kwargs) -> pygame.event.Event:
         return post_event(event, **kwargs)
 
     def on_create_game(self, **kwargs):

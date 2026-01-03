@@ -1,9 +1,12 @@
 import argparse
+from argparse import ArgumentParser
+from typing import Any
 import tic_tac_toe
 from tic_tac_toe.model.game_object import Symbol
+from tic_tac_toe.utils import Settings
 
-def arg_parser():
-    ap = argparse.ArgumentParser()
+def arg_parser() -> ArgumentParser:
+    ap = ArgumentParser()
     ap.prog = "python -m " + tic_tac_toe.__name__
     mode = ap.add_argument_group("mode")
     mode.add_argument("--mode", '-m', choices=['local', 'centralised'],
@@ -24,8 +27,8 @@ def arg_parser():
     game.add_argument("--no-gui", help="Disable GUI", action="store_true", default=False)
     return ap
 
-def args_to_settings(args):
-    settings = tic_tac_toe.Settings(size=tuple(args.size), debug=args.debug)
+def args_to_settings(args: Any) -> Settings:
+    settings = Settings(size=tuple(args.size), debug=args.debug)
     settings.host = args.host
     settings.port = args.port
     settings.fps = args.fps
@@ -41,12 +44,12 @@ if args.mode == 'local':
     tic_tac_toe.main(settings)
     exit(0)
 if args.mode == 'centralised':
-    import tic_tac_toe.remote.centralised
+    from tic_tac_toe.remote.centralised import main_lobby, main_terminal
     if args.role == 'coordinator':
-        tic_tac_toe.remote.centralised.main_lobby(settings)
+        main_lobby(settings)
         exit(0)
     if args.role == 'terminal':
-        tic_tac_toe.remote.centralised.main_terminal(
+        main_terminal(
             symbol=Symbol[str(args.symbol).upper()],
             creation=args.create,
             game_id=args.game_id,

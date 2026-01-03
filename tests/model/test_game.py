@@ -10,10 +10,7 @@ class TestTicTacToe(TestCase):
             dim=self.dim,
             players=[Player(Symbol.NOUGHT)]
         )
-        self.expected_config = Config(
-            self.screen_size.x / self.dim,
-            self.screen_size.y / self.dim
-        )
+        self.expected_config = Config(self.screen_size.x / self.dim, self.screen_size.y / self.dim)
 
     def test_initial_config(self):
         self.assertEqual(self.tictactoe.config, self.expected_config)

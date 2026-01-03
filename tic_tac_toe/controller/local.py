@@ -9,7 +9,7 @@ class TicTacToeInputHandler(InputHandler):
         pos = self._command.click().__getattribute__("click_point")
         self.post_event(ControlEvent.MARK_PLACED, cell=self._to_cell(pos), symbol=self._tic_tac_toe.turn)
     
-    def handle_inputs(self, dt=None, symbol: Symbol=None):
+    def handle_inputs(self, dt: float=None, symbol: Symbol=None):
         for event in pygame.event.get(self.INPUT_EVENTS):
             match (event.type):
                 case pygame.MOUSEBUTTONDOWN:
@@ -66,7 +66,7 @@ class TicTacToeEventHandler(EventHandler):
         tic_tac_toe.change_turn()
         tic_tac_toe.remove_random_mark()
 
-    def on_time_elapsed(self, tic_tac_toe, dt):
+    def on_time_elapsed(self, tic_tac_toe: TicTacToe, dt: float):
         tic_tac_toe.update(dt)
 
 class TicTacToeLocalController(TicTacToeInputHandler, TicTacToeEventHandler):

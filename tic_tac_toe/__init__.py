@@ -4,9 +4,10 @@ from .log import logger, logging
 from .utils import Settings
 from .view import ShowNothingTicTacToeView
 from .controller.mark_utils import *
+from typing import List
 
 class TicTacToeGame:
-    def __init__(self, settings: Settings=None, players=[]):
+    def __init__(self, settings: Settings=None, players: List[Player]=[]):
         self.settings = settings or Settings()
         self.logger = logger("TicTacToeGame")
         self.tic_tac_toe = TicTacToe(
@@ -29,7 +30,7 @@ class TicTacToeGame:
         return self._turn
     
     @turn.setter
-    def turn(self, player: Player) -> Player:
+    def turn(self, player: Player):
         assert isinstance(player, Player), f"Invalid symbol for a player: {player.symbol}"
         self._turn = player
 
@@ -86,7 +87,7 @@ class TicTacToeGame:
         self.running = False
 
 
-def main(settings = None):
+def main(settings: Settings=None):
     if settings is None:
         settings = Settings()
     players = [Player(symbol) for symbol in Symbol.values()]

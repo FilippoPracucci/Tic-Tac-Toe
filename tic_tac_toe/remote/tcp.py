@@ -1,3 +1,4 @@
+from typing import Any, Dict
 from tic_tac_toe.remote import Connection, Server, ConnectionEvent, ServerEvent, Address
 from tic_tac_toe.log import logger
 import socket
@@ -39,14 +40,14 @@ class TcpConnection(Connection):
     def closed(self):
         return self.__socket._closed
     
-    def send(self, message):
+    def send(self, message: Any):
         if not isinstance(message, bytes):
             message = message.encode()
             message = int.to_bytes(len(message), 2, 'big') + message
         self.__socket.sendall(message)
         self.logger.debug(f"Sent {message!r} to all")
 
-    def receive(self):
+    def receive(self) -> str:
         length = int.from_bytes(self.__socket.recv(2), 'big')
         if length == 0:
             return None
@@ -80,7 +81,7 @@ class TcpConnection(Connection):
         self.callback(event, payload, connection, error)
 
 class TcpServer(Server):
-    def __init__(self, port, callback=None):
+    def __init__(self, port: int, callback=None):
         self.logger = logger("TcpServer")
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._address = Address.local_port_on_any_interface(port)
@@ -97,7 +98,7 @@ class TcpServer(Server):
         return Address(*self.__socket.getsockname())
     
     @property
-    def connections(self) -> dict:
+    def connections(self) -> Dict:
         return self._connections
 
     @property

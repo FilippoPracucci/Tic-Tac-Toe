@@ -1,6 +1,6 @@
 from datetime import datetime
 from multiprocessing import Process, Pipe
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 from pygame.event import Event
 import pygame
 from tic_tac_toe.log import logger
@@ -32,7 +32,7 @@ class LobbyCoordinator():
         self.__coordinators: dict[int, Address] = {}
         self.__processes: dict[int, Process] = {}
 
-    def create_controller(lobby_coordinator):
+    def create_controller(lobby_coordinator: 'LobbyCoordinator'):
         from tic_tac_toe.controller import LobbyEventHandler
 
         class Controller(LobbyEventHandler):
@@ -70,12 +70,12 @@ class LobbyCoordinator():
         return Controller()
 
     @property
-    def coordinators(self) -> dict[int, Address]:
+    def coordinators(self) -> Dict[int, Address]:
         with self._lock:
             return self.__coordinators
 
     @coordinators.setter
-    def coordinators(self, coordinators: dict[int, Address]):
+    def coordinators(self, coordinators: Dict[int, Address]):
         with self._lock:
             self.__coordinators = coordinators
 
@@ -114,7 +114,7 @@ class LobbyCoordinator():
     def stop(self):
         self.running = False
 
-    def _on_new_connection(self, event: ServerEvent, connection: TcpConnection, address: Address, error):
+    def _on_new_connection(self, event: ServerEvent, connection: TcpConnection, address: Address, error: Exception):
         match event:
             case ServerEvent.LISTEN:
                 self.logger.debug(f"Server listening on port {address.port} at {address.ip}")
@@ -126,7 +126,7 @@ class LobbyCoordinator():
             case ServerEvent.ERROR:
                 self.logger.debug(error)
 
-    def _on_message_received(self, event: ConnectionEvent, payload, connection: TcpConnection, error):
+    def _on_message_received(self, event: ConnectionEvent, payload: str, connection: TcpConnection, error: Exception):
         match event:
             case ConnectionEvent.MESSAGE:
                 if payload is not None:
@@ -153,7 +153,7 @@ class TicTacToeCoordinator(TicTacToeGame):
         self._peers: set[Address] = set()
         self._lock = threading.RLock()
 
-    def create_view(coordinator):
+    def create_view(coordinator: 'TicTacToeCoordinator'):
         from tic_tac_toe.view import ShowNothingTicTacToeView
         from tic_tac_toe.controller.local import ControlEvent
 
@@ -164,7 +164,7 @@ class TicTacToeCoordinator(TicTacToeGame):
 
         return SendToPeersTicTacToeView(coordinator.tic_tac_toe)
 
-    def create_controller(coordinator):
+    def create_controller(coordinator: 'TicTacToeCoordinator'):
         from tic_tac_toe.controller.local import TicTacToeEventHandler, InputHandler
 
         class Controller(TicTacToeEventHandler, InputHandler):
@@ -187,7 +187,7 @@ class TicTacToeCoordinator(TicTacToeGame):
                 self.post_event(LobbyEvent.DELETE_GAME, game_id=coordinator.game_id)
                 coordinator.stop()
 
-            def handle_inputs(self, dt=None):
+            def handle_inputs(self, dt: float=None):
                 self.time_elapsed(dt)
 
             def handle_events(self):
@@ -208,30 +208,30 @@ class TicTacToeCoordinator(TicTacToeGame):
         self.server.close()
 
     @property
-    def peers(self):
+    def peers(self) -> Set[Address]:
         with self._lock:
             return set(self._peers)
 
     @peers.setter
-    def peers(self, value):
+    def peers(self, value: Iterable[Address]):
         with self._lock:
             self._peers = set(value)
 
-    def add_peer(self, peer):
+    def add_peer(self, peer: Address):
         with self._lock:
             self._peers.add(peer)
 
-    def remove_peer(self, peer):
+    def remove_peer(self, peer: Address):
         with self._lock:
             if self._peers.__contains__(peer):
                 self._peers.remove(peer)
 
-    def _broadcast_to_all_peers(self, message):
+    def _broadcast_to_all_peers(self, message: Any):
         event = serialize(message)
         for peer in self.peers:
                 self.server.connections[peer].send(event)
 
-    def _on_new_connection(self, event: ServerEvent, connection: TcpConnection, address: Address, error):
+    def _on_new_connection(self, event: ServerEvent, connection: TcpConnection, address: Address, error: Exception):
         match event:
             case ServerEvent.LISTEN:
                 self.logger.debug(f"Server listening on port {address.port} at {address.ip}")
@@ -244,7 +244,7 @@ class TicTacToeCoordinator(TicTacToeGame):
             case ServerEvent.ERROR:
                 self.logger.debug(error)
 
-    def _on_message_received(self, event: ConnectionEvent, payload, connection: TcpConnection, error):
+    def _on_message_received(self, event: ConnectionEvent, payload: str, connection: TcpConnection, error: Exception):
         match event:
             case ConnectionEvent.MESSAGE:
                 if payload:
@@ -287,7 +287,7 @@ class TicTacToeTerminal(TicTacToeGame):
         self._thread_sender = threading.Thread(target=self._send_message, daemon=True)
         self._thread_sender.start()
 
-    def create_controller(terminal):
+    def create_controller(terminal: 'TicTacToeTerminal'):
         from tic_tac_toe.controller.local import TicTacToeInputHandler, EventHandler
 
         class Controller(TicTacToeInputHandler, EventHandler):
@@ -299,7 +299,7 @@ class TicTacToeTerminal(TicTacToeGame):
                     pos = self._command.click().__getattribute__("click_point")
                     self.post_event(ControlEvent.MARK_PLACED, cell=self._to_cell(pos), symbol=terminal.symbol)
 
-            def post_event(self, event: Event | LobbyEvent | ControlEvent, **kwargs):
+            def post_event(self, event: Event | LobbyEvent | ControlEvent, **kwargs) -> Event:
                 pygame_event = super().post_event(event, **kwargs)
                 if isinstance(event, LobbyEvent) \
                     or (terminal.connected_to_coordinator and not ControlEvent.TIME_ELAPSED.matches(pygame_event)):
@@ -307,7 +307,7 @@ class TicTacToeTerminal(TicTacToeGame):
                     terminal.client.send(serialize(pygame_event))
                 return pygame_event
 
-            def handle_inputs(self, dt=None):
+            def handle_inputs(self, dt: float=None):
                 if terminal.connected_to_coordinator:
                     return super().handle_inputs(dt, terminal.symbol)
                 else:
@@ -407,7 +407,7 @@ class TicTacToeTerminal(TicTacToeGame):
     def message(self, text: str, sender: str, timestamp: datetime=None):
         if timestamp is None:
             timestamp = datetime.now()
-        return f"[{timestamp.isoformat()}] {sender}: {text.strip()}"
+        return f"[{timestamp.isoformat(timespec="minutes")}] {sender}: {text.strip()}"
 
 
 def main_lobby(settings: Settings=None):

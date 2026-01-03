@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from ..utils import Settings
+from typing import List
 
 @dataclass
 class Cell:
@@ -11,11 +12,11 @@ class Cell:
 
 class Grid:
     dim: int
-    cells: list[Cell]
+    cells: List[Cell]
 
-    def __init__(self, dim = Settings.dim):
+    def __init__(self, dim : Settings=Settings.dim):
         self.dim = dim
         self.cells = list(Cell(i, j) for i in range(self.dim) for j in range(self.dim))
 
-    def __eq__(self, other):
+    def __eq__(self, other: 'Grid'):
         return self.dim == other.dim and self.cells.__eq__(other.cells)

@@ -1,3 +1,4 @@
+from typing import Any, List
 from pygame.math import Vector2
 from enum import Enum
 from ..log import logger
@@ -24,13 +25,13 @@ class Positioned:
         return self.position.y # type: ignore[attr-defined]
 
 class GameObject(Sized, Positioned):
-    def __init__(self, size, position=None, name=None):
+    def __init__(self, size: Vector2, position: Vector2=None, name: str=None):
         self._size = Vector2(size)
         self._position = Vector2(position) if position is not None else Vector2()
         self.name = name or self.__class__.__name__.lower()
         self.logger = logger("GameObject")
 
-    def __eq__(self, other):
+    def __eq__(self, other: 'GameObject'):
         return isinstance(other, type(self)) and \
             self.name == other.name and \
             self.size == other.size and \
@@ -88,7 +89,7 @@ class Symbol(Enum):
         return self.value == "X"
 
     @classmethod
-    def values(cls) -> list['Symbol']:
+    def values(cls) -> List['Symbol']:
         return list(cls.__members__.values())
 
 @dataclass
@@ -107,12 +108,12 @@ class Player:
 class Mark(GameObject):
     from .grid import Cell
 
-    def __init__(self, cell: Cell, symbol: Symbol, size=Vector2(0), position=None, name=None):
+    def __init__(self, cell: Cell, symbol: Symbol, size: Vector2=Vector2(0), position: Vector2=None, name: str=None):
         super().__init__(size, position, name or "mark_" + symbol.name.lower())
         self.cell = cell
         self.symbol = symbol
 
-    def __eq__(self, other):
+    def __eq__(self, other: 'Mark'):
         return super().__eq__(other) and self.cell == other.cell and self.symbol == other.symbol
 
     def __hash__(self):

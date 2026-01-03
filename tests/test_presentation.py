@@ -28,7 +28,7 @@ class TestPresentation(unittest.TestCase):
         ))
         tic_tac_toe.update(1.5)
         self.event = Event(1, {"state": tic_tac_toe})
-        self.serialized_event = (DIR_CURRENT / "expected.json").read_text()
+        self.serialized_event: str = (DIR_CURRENT / "expected.json").read_text()
 
     def test_serialize_event(self):
         actual = json.loads(presentation.serialize(self.event))

@@ -7,7 +7,7 @@ class TestMarkUtils(TestCase):
     mark2 = Mark(Cell(1, 2), Symbol.NOUGHT)
     marks = [mark1, mark2]
 
-    def setUp(self) -> None:
+    def setUp(self):
         self.mark_utils = MarkUtils()
         self.mark_views = self.mark_utils.decompose(self.marks)
 

@@ -1,5 +1,5 @@
 import socket
-from typing import Protocol
+from typing import Protocol, Set, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -22,32 +22,32 @@ class Address:
         return f"{type(self).__name__}(host={self.host}, ip={self.ip}, port={self.port})"
 
     @property
-    def ip(self):
+    def ip(self) -> str:
         if self._ip is None:
             self._ip = socket.gethostbyname(self.host)
         return self._ip
 
-    def equivalent_to(self, other):
+    def equivalent_to(self, other: 'Address') -> bool:
         return self.ip == other.ip and self.port == other.port
 
     @classmethod
-    def parse(cls, address: str):
+    def parse(cls, address: str) -> 'Address':
         host, port = address.split(":")
         return cls(host, int(port))
 
     @classmethod
-    def local_port_on_any_interface(cls, port: int):
+    def local_port_on_any_interface(cls, port: int) -> 'Address':
         return cls("0.0.0.0", port)
 
     @classmethod
-    def localhost(cls, port: int):
+    def localhost(cls, port: int) -> 'Address':
         return cls("127.0.0.1", port)
 
     @classmethod
-    def any_local_port(cls):
+    def any_local_port(cls) -> 'Address':
         return cls("", 0)
 
-    def as_tuple(self):
+    def as_tuple(self) -> Tuple:
         return self.ip, self.port
 
 class ConnectionEvent(Enum):
@@ -56,7 +56,7 @@ class ConnectionEvent(Enum):
     ERROR = 2
 
     @classmethod
-    def all(cls) -> set['ConnectionEvent']:
+    def all(cls) -> Set['ConnectionEvent']:
         return set(cls.__members__.values())
 
 class Connection(Protocol):
@@ -81,7 +81,7 @@ class Connection(Protocol):
     def send(self, payload: bytes | str):
         ...
 
-    def receive(self, decode=True):
+    def receive(self, decode: bool=True):
         ...
 
     def close(self):
@@ -100,7 +100,7 @@ class ServerEvent(Enum):
     ERROR = 3
 
     @classmethod
-    def all(cls) -> set['ServerEvent']:
+    def all(cls) -> Set['ServerEvent']:
         return set(cls.__members__.values())
 
 class Server(Protocol):
@@ -110,7 +110,7 @@ class Server(Protocol):
     def listen(self) -> Connection:
         ...
 
-    def receive(self, decode=True) -> tuple[str | bytes | None, Address | None]:
+    def receive(self, decode: bool=True) -> Tuple[str | bytes | None, Address | None]:
         ...
 
     def send(self, address: Address, payload: bytes | str):

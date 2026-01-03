@@ -1,11 +1,11 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Tuple, Dict
 from statistics import mean
 
 @dataclass
 class Settings:
     debug: bool = True
-    size: tuple = (900, 600)
+    size: Tuple = (900, 600)
     fps: int = 60
     host: Optional[str] = None
     port: Optional[int] = None
@@ -19,7 +19,7 @@ class Config:
     cell_height_size: int
 
     @property
-    def cells_area_matrix(self):
+    def cells_area_matrix(self) -> Dict:
         self._cells_area_matrix = dict()
         for i in range(Settings.dim):
             for j in range(Settings.dim):
@@ -28,5 +28,5 @@ class Config:
         return self._cells_area_matrix
     
     @property
-    def cells_symbol_position(self):
+    def cells_symbol_position(self) -> Dict:
         return {cell: (int(mean(area[0])), int(mean(area[1]))) for cell, area in self.cells_area_matrix.items()}

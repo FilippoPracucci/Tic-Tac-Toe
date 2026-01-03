@@ -19,8 +19,8 @@ class TestMark(TestCase):
 
 class TestGrid(TestCase):
     def test_create_grid(self):
-        dim = 3
-        grid = Grid(dim)
-        cells = list(Cell(i, j) for i in range(dim) for j in range(dim))
+        dim: int = 3
+        grid: Grid = Grid(dim)
+        cells: List[Cell] = list(Cell(i, j) for i in range(dim) for j in range(dim))
         self.assertEqual(dim, grid.dim)
         self.assertEqual(cells, grid.cells)
