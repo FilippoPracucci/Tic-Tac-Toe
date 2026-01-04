@@ -276,12 +276,12 @@ class TicTacToeTerminal(TicTacToeGame):
 
     def __init__(self, symbol: Symbol, create_game: bool=False, game_id: Optional[int]=None, settings: Settings=None):
         settings = settings or Settings()
+        self.symbol = symbol
         self.create_game = create_game
         self.game_id = game_id
         self.logger = logger("Terminal")
         super().__init__(settings)
         self.client = TcpClient(Address(host=self.settings.host or DEFAULT_HOST, port=self.settings.port or DEFAULT_PORT))
-        self.symbol = symbol
         self.connected_to_coordinator = False
         self._lock = threading.RLock()
         self._thread_receiver = threading.Thread(target=self._handle_ingoing_messages, daemon=True)
@@ -351,6 +351,9 @@ class TicTacToeTerminal(TicTacToeGame):
                 terminal.stop()
 
         return Controller(terminal.tic_tac_toe)
+
+    def create_view(self):
+        return super().create_view(f"Player {self.symbol.value}")
 
     def _handle_ingoing_messages(self):
         while self.running:

@@ -20,8 +20,9 @@ class ShowNothingTicTacToeView(TicTacToeView):
         pass
 
 class ScreenTicTacToeView(TicTacToeView):
-    def __init__(self, tic_tac_toe: TicTacToe, screen: Surface=None):
+    def __init__(self, tic_tac_toe: TicTacToe, title: str, screen: Surface=None):
         super().__init__(tic_tac_toe)
+        pygame.display.set_caption(title)
         self._screen = screen or pygame.display.set_mode(tic_tac_toe.size)
 
     def __getattr__(self, name: str):

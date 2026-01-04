@@ -54,9 +54,9 @@ class TicTacToeGame:
 
         return Controller()
 
-    def create_view(self):
+    def create_view(self, title: str="GAME"):
         from .view import ScreenTicTacToeView
-        return ScreenTicTacToeView(self.tic_tac_toe)
+        return ScreenTicTacToeView(self.tic_tac_toe, title)
 
     def before_run(self):
         pygame.init()
