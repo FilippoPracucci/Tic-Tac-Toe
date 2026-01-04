@@ -75,7 +75,7 @@ class TcpConnection(Connection):
         finally:
             self.close()
 
-    def on_event(self, event: ConnectionEvent, payload: str=None, connection: 'Connection'=None, error: Exception=None):
+    def on_event(self, event: ConnectionEvent, payload: str=None, connection: Connection=None, error: Exception=None):
         if connection is None:
             connection = self
         self.callback(event, payload, connection, error)

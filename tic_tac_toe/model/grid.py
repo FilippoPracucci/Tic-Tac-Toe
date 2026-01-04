@@ -14,7 +14,7 @@ class Grid:
     dim: int
     cells: List[Cell]
 
-    def __init__(self, dim : Settings=Settings.dim):
+    def __init__(self, dim: int=Settings.dim):
         self.dim = dim
         self.cells = list(Cell(i, j) for i in range(self.dim) for j in range(self.dim))
 

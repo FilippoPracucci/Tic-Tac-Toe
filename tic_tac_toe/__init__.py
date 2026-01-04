@@ -3,7 +3,6 @@ from .model import *
 from .log import logger, logging
 from .utils import Settings
 from .view import ShowNothingTicTacToeView
-from .controller.mark_utils import *
 from typing import List
 
 class TicTacToeGame:
@@ -17,7 +16,6 @@ class TicTacToeGame:
         )
         self.dt = None
         self._turn: Player = None
-        self.mark_utils = MarkUtils()
         self.view = self.create_view() if self.settings.gui else ShowNothingTicTacToeView(self.tic_tac_toe)
         self.clock = pygame.time.Clock()
         self.running = True
