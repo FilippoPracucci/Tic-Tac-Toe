@@ -130,7 +130,7 @@ class LobbyCoordinator():
         match event:
             case ConnectionEvent.MESSAGE:
                 if payload is not None:
-                    self.__handle_message(deserialize(payload))
+                    self.__handle_message(deserialize(payload), connection=connection)
             case ConnectionEvent.CLOSE:
                 self.logger.debug(f"Connection with coordinator {connection.remote_address} closed")
             case ConnectionEvent.ERROR:
@@ -139,7 +139,8 @@ class LobbyCoordinator():
     def __handle_message(self, message: Any, **kwargs):
         self.logger.debug(f"Message: {message}")
         if LobbyEvent.CREATE_GAME.matches(message) or LobbyEvent.JOIN_GAME.matches(message):
-            message.connection = kwargs["connection"]
+            if "connection" in kwargs:
+                message.connection = kwargs["connection"]
         pygame.event.post(message)
 
 class TicTacToeCoordinator(TicTacToeGame):
@@ -262,7 +263,8 @@ class TicTacToeCoordinator(TicTacToeGame):
     def __handle_message(self, message: Any, **kwargs):
         if isinstance(message, pygame.event.Event):
             if ControlEvent.PLAYER_JOIN.matches(message):
-                message.connection = kwargs["connection"]
+                if "connection" in kwargs:
+                    message.connection = kwargs["connection"]
             elif ControlEvent.PLAYER_LEAVE.matches(message):
                 self._broadcast_to_all_peers(message)
             pygame.event.post(message)
