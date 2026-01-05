@@ -14,6 +14,8 @@ from tic_tac_toe.remote.tcp import TcpClient, TcpConnection, TcpServer, Address
 from tic_tac_toe.remote.presentation import serialize, deserialize
 import threading
 
+from tic_tac_toe.view import LobbyMenu
+
 
 DEFAULT_HOST = "localhost"
 DEFAULT_PORT = 12345
@@ -390,10 +392,6 @@ class TicTacToeTerminal(TicTacToeGame):
 
     def before_run(self):
         super().before_run()
-        if self.create_game:
-            self.controller.post_event(ControlEvent.PLAYER_CREATE_GAME)
-        elif self.game_id is not None:
-            self.controller.post_event(ControlEvent.PLAYER_JOIN_GAME, game_id=self.game_id)
 
     def after_run(self):
         super().after_run()
@@ -425,4 +423,5 @@ def main_coordinator(game_id: int, connection: Connection, settings: Settings=No
     coordinator.run()
 
 def main_terminal(symbol: Symbol, creation: bool=False, game_id: Optional[int]=None, settings: Settings=None):
-    TicTacToeTerminal(symbol, creation, game_id, settings).run()
+    terminal = TicTacToeTerminal(symbol, creation, game_id, settings)
+    LobbyMenu(settings.size, callback=terminal.run)

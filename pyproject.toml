@@ -8,6 +8,7 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.12"
 pygame = "^2.6.0"
+pygame-menu = "^4.5.2"
 
 [tool.poetry.scripts]
 tic-tac-toe = "tic-tac-toe:main"

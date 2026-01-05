@@ -1,5 +1,10 @@
+import threading
+from typing import Any, Tuple
 import pygame
-from pygame import draw, Surface
+import pygame_menu
+from pygame_menu import themes
+from pygame import Vector2, draw, Surface
+from tic_tac_toe.controller import ControlEvent, InputHandler
 from tic_tac_toe.model import TicTacToe, Symbol, Mark
 
 SCREEN_BACKGROUND_COLOR = "black"
@@ -18,6 +23,29 @@ class TicTacToeView:
 class ShowNothingTicTacToeView(TicTacToeView):
     def render(self):
         pass
+
+class LobbyMenu(pygame_menu.Menu):
+    def __init__(self, size: Tuple, callback=None):
+        pygame.init()
+        self._screen = pygame.display.set_mode(Vector2(size))
+        super().__init__("Lobby Menu", size[0], size[1], theme=themes.THEME_BLUE)
+        self.set_onclose(callback)
+        self._lock = threading.RLock()
+        self.__setup()
+
+    def __setup(self):
+        self.add.button("Create a new game", self._create_game)
+        self.add.dropselect("Join a game", ["1", "2", "3"], onchange=self._join_a_game)
+        self.mainloop(self._screen)
+
+    def _create_game(self):
+        InputHandler().post_event(ControlEvent.PLAYER_CREATE_GAME)
+        self.close()
+
+    def _join_a_game(self, selected: Tuple):
+        InputHandler().post_event(ControlEvent.PLAYER_JOIN_GAME, game_id=int(selected[0]))
+        self.close()
+
 
 class ScreenTicTacToeView(TicTacToeView):
     def __init__(self, tic_tac_toe: TicTacToe, title: str, screen: Surface=None):
