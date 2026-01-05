@@ -54,7 +54,7 @@ class TicTacToe(Sized):
             self._players.append(player)
 
     def add_player(self, player: Player):
-        if len(list(filter(lambda p: p.symbol == player.symbol, self.players))) != 0:
+        if list(filter(lambda p: p.symbol == player.symbol, self.players)):
             raise ValueError(f"A player with symbol '{player.symbol}' has already joined the game!")
         self._players.append(player)
         self.logger.debug(f"Add {player}")
@@ -65,7 +65,7 @@ class TicTacToe(Sized):
         return list(filter(lambda p: p == player, self._players))[0]
 
     def remove_player_by_symbol(self, symbol: Symbol):
-        if len(list(filter(lambda p: p.symbol == symbol, self._players))) == 0:
+        if not list(filter(lambda p: p.symbol == symbol, self._players)):
             raise ValueError(f"No such player with {symbol}")
         self.players = list(filter(lambda p: p.symbol != symbol, self._players))
         self.logger.debug(f"Removed player from {self} with {symbol}")
@@ -96,11 +96,11 @@ class TicTacToe(Sized):
 
     def has_mark(self, cell: Cell) -> bool:
         assert cell is not None, "Cell not provided, but necessary"
-        return len(list(filter(lambda m: m.cell == cell, self.marks))) > 0
+        return list(filter(lambda m: m.cell == cell, self.marks))
 
     def get_mark(self, cell: Cell) -> Mark:
         if self.has_mark(cell):
-            return list(filter(lambda m: m.cell == cell, self.marks)).__getitem__(0)
+            return list(filter(lambda m: m.cell == cell, self.marks)).pop()
         else:
             raise ValueError(f"{cell} is not marked")
 
@@ -125,12 +125,12 @@ class TicTacToe(Sized):
         def has_won(player: Player) -> bool:
             cells_marked = list(map(lambda m: m.cell, self.get_noughts() if player.symbol.is_nought else self.get_crosses()))
             for row in self._get_rows():
-                if len(cells_marked).__ge__(self.grid.dim) and all(list(map(lambda cell: cell in cells_marked, row))):
+                if len(cells_marked) >= self.grid.dim and all(list(map(lambda cell: cell in cells_marked, row))):
                     return True
             for col in self._get_columns():
-                if len(cells_marked).__ge__(self.grid.dim) and all(list(map(lambda cell: cell in cells_marked, col))):
+                if len(cells_marked) >= self.grid.dim and all(list(map(lambda cell: cell in cells_marked, col))):
                     return True
-            return len(cells_marked).__ge__(self.grid.dim) and \
+            return len(cells_marked) >= self.grid.dim and \
                 (all(list(map(lambda cell: cell in cells_marked, self._get_diagonal()))) or \
                 all(list(map(lambda cell: cell in cells_marked, self._get_antidiagonal()))))
 

@@ -193,7 +193,7 @@ class TicTacToeCoordinator(TicTacToeGame):
 
             def handle_events(self):
                 game_over_events: List[Event] = pygame.event.get(ControlEvent.GAME_OVER.value)
-                if len(game_over_events) > 0:
+                if game_over_events:
                     event = game_over_events.pop()
                     coordinator._broadcast_to_all_peers(event)
                     self.on_game_over(tic_tac_toe=self._tic_tac_toe, symbol=event.symbol)
