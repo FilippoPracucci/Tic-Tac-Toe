@@ -302,11 +302,9 @@ class TicTacToeCoordinator(TicTacToeGame):
 
 class TicTacToeTerminal(TicTacToeGame):
 
-    def __init__(self, symbol: Symbol, create_game: bool=False, game_id: Optional[int]=None, settings: Settings=None):
+    def __init__(self, symbol: Symbol, settings: Settings=None):
         settings = settings or Settings()
         self.symbol = symbol
-        self.create_game = create_game
-        self.game_id = game_id
         self.logger = logger("Terminal")
         super().__init__(settings)
         self.client = TcpClient(Address(host=self.settings.host or DEFAULT_HOST, port=self.settings.port or DEFAULT_PORT))
@@ -448,6 +446,6 @@ def main_coordinator(game_id: int, connection: Connection, settings: Settings=No
     connection.close()
     coordinator.run()
 
-def main_terminal(symbol: Symbol, creation: bool=False, game_id: Optional[int]=None, settings: Settings=None):
-    terminal = TicTacToeTerminal(symbol, creation, game_id, settings)
+def main_terminal(symbol: Symbol, settings: Settings=None):
+    terminal = TicTacToeTerminal(symbol, settings)
     LobbyMenu(settings.size, callback=terminal.run)

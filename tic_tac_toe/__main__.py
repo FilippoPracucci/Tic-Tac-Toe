@@ -17,8 +17,6 @@ def arg_parser() -> ArgumentParser:
     networking.add_argument("--host", '-H', help="Host to connect to", type=str, default="localhost")
     networking.add_argument("--port", '-p', help="Port to connect to", type=int, default=None)
     game = ap.add_argument_group("game")
-    game.add_argument("--create", '-c', help="Create a new game", action="store_true", default=False)
-    game.add_argument("--join-game", '-j', help="Join an existing game by its ID", type=int, dest="game_id", default=None)
     game.add_argument("--symbol", '-s', choices=[symbol.name.lower() for symbol in Symbol.values()],
                       help="Symbol to play with", default=Symbol.CROSS, dest="symbol")
     game.add_argument("--debug", '-d', help="Enable debug mode", action="store_true", default=False)
@@ -49,12 +47,7 @@ if args.mode == 'centralised':
         main_lobby(settings)
         exit(0)
     if args.role == 'terminal':
-        main_terminal(
-            symbol=Symbol[str(args.symbol).upper()],
-            creation=args.create,
-            game_id=args.game_id,
-            settings=settings
-        )
+        main_terminal(symbol=Symbol[str(args.symbol).upper()], settings=settings)
         exit(0)
     print(f"Invalid role: {args.role}. Must be either 'coordinator' or 'terminal'")
 parser.print_help()
