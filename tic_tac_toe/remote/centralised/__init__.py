@@ -12,10 +12,8 @@ from tic_tac_toe.model.game_object import Symbol
 from tic_tac_toe.controller import LobbyEvent, ControlEvent
 from tic_tac_toe.remote.tcp import TcpClient, TcpConnection, TcpServer, Address
 from tic_tac_toe.remote.presentation import serialize, deserialize
-import threading
-
-from tic_tac_toe.view import LobbyMenu
-
+import threading, json, os
+from tic_tac_toe.view import LobbyMenu, GAME_IDS_FILE
 
 DEFAULT_HOST = "localhost"
 DEFAULT_PORT = 12345
@@ -33,13 +31,16 @@ class LobbyCoordinator():
         self._lock = threading.RLock()
         self.__coordinators: dict[int, Address] = {}
         self.__processes: dict[int, Process] = {}
+        self.__joinable_games: List[int] = []
+        with open(GAME_IDS_FILE, "w") as file:
+            file.write("")
 
     def create_controller(lobby_coordinator: 'LobbyCoordinator'):
         from tic_tac_toe.controller import LobbyEventHandler
 
         class Controller(LobbyEventHandler):
             def on_create_game(self, **kwargs):
-                game_id = max(lobby_coordinator.coordinators.keys(), default=0) + 1
+                game_id = max(lobby_coordinator.game_ids(), default=0) + 1
                 lobby_connection, coordinator_connection = Pipe()
                 process: Process = Process(
                     target=main_coordinator,
@@ -50,6 +51,8 @@ class LobbyCoordinator():
                 coordinator_address = lobby_connection.recv()
                 lobby_coordinator.add_process(game_id, process)
                 lobby_coordinator.add_coordinator(game_id, coordinator_address)
+                lobby_coordinator.add_joinable_game(game_id)
+                self.__update_games_id_db()
                 if "connection" in kwargs:
                     connection: TcpConnection = kwargs["connection"]
                     connection.send(serialize({"coordinator": (connection.local_address.ip, coordinator_address.port)}))
@@ -57,10 +60,14 @@ class LobbyCoordinator():
             def on_delete_game(self, game_id: int):
                 lobby_coordinator.remove_coordinator_by_id(game_id)
                 lobby_coordinator.kill_process_by_id(game_id)
+                lobby_coordinator.remove_joinable_game(game_id)
+                self.__update_games_id_db()
 
             def on_join_game(self, game_id: int, **kwargs):
                 connection: TcpConnection = kwargs["connection"] if "connection" in kwargs else None
-                if game_id in lobby_coordinator.coordinators.keys():
+                lobby_coordinator.remove_joinable_game(game_id)
+                self.__update_games_id_db()
+                if game_id in lobby_coordinator.game_ids():
                     if connection is not None:
                         connection.send(serialize({"coordinator": (connection.local_address.ip, lobby_coordinator.coordinators[game_id].port)}))
                 else:
@@ -68,6 +75,10 @@ class LobbyCoordinator():
                     lobby_coordinator.logger.debug(error)
                     if connection is not None:
                         connection.send(serialize({"error": error}))
+
+            def __update_games_id_db(self):
+                with open(GAME_IDS_FILE, "w") as file:
+                    json.dump(lobby_coordinator.joinable_games(), file)
 
         return Controller()
 
@@ -80,6 +91,20 @@ class LobbyCoordinator():
     def coordinators(self, coordinators: Dict[int, Address]):
         with self._lock:
             self.__coordinators = coordinators
+
+    def game_ids(self) -> List[int]:
+        return list(self.coordinators.keys())
+
+    def joinable_games(self) -> List[int]:
+        return self.__joinable_games
+
+    def add_joinable_game(self, game_id: int):
+        with self._lock:
+            self.__joinable_games.append(game_id)
+
+    def remove_joinable_game(self, game_id: int):
+        with self._lock:
+            self.__joinable_games.remove(game_id)
 
     def add_coordinator(self, game_id: int, address: Address):
         with self._lock:
@@ -104,6 +129,7 @@ class LobbyCoordinator():
 
     def after_run(self):
         pygame.quit()
+        os.remove(GAME_IDS_FILE)
 
     def run(self):
         try:
