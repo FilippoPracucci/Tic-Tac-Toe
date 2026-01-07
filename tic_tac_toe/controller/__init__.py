@@ -169,7 +169,7 @@ class EventHandler:
     def handle_events(self):
         for event in pygame.event.get(self.GAME_EVENTS):
             if ControlEvent.PLAYER_CREATE_GAME.matches(event):
-                self.on_player_create_game()
+                self.on_player_create_game(**event.dict)
             elif ControlEvent.PLAYER_JOIN_GAME.matches(event):
                 self.on_player_join_game(**event.dict)
             elif ControlEvent.PLAYER_JOIN.matches(event):
@@ -187,10 +187,10 @@ class EventHandler:
             elif ControlEvent.TIME_ELAPSED.matches(event):
                 self.on_time_elapsed(self._tic_tac_toe, **event.dict)
 
-    def on_player_create_game(self):
+    def on_player_create_game(self, symbol: Symbol):
         pass
 
-    def on_player_join_game(self, game_id: int):
+    def on_player_join_game(self, symbol: Symbol, game_id: int):
         pass
 
     def on_player_join(self, tic_tac_toe: TicTacToe, symbol: Symbol, **kwargs):

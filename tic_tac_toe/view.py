@@ -34,20 +34,28 @@ class LobbyMenu(pygame_menu.Menu):
         pygame.init()
         self._lock = threading.RLock()
         self._game_ids:List[str] = ["0"]
+        self._symbol_selected: Symbol = Symbol.CROSS
         self._id_selected = 0
         self._screen = pygame.display.set_mode(Vector2(size))
         super().__init__("TicTacToe", size[0], size[1], theme=themes.THEME_BLUE)
         self._menubar._backbox = False
         self.set_onclose(callback)
+        self._symbol_selector: DropSelect = None
         self._create_button: Button = None
-        self._drop_selector: DropSelect = None
+        self._game_selector: DropSelect = None
         self._join_button: Button = None
         self.__setup()
 
     def __setup(self):
         self.init_game_ids()
+        self._symbol_selector = self.add.dropselect(
+            title="Symbol: ",
+            items=list(map(lambda s: str(s.value), Symbol.values())),
+            placeholder="Select a symbol",
+            onchange=self._change_symbol_selected
+        )
         self._create_button = self.add.button("Create a new game", self._create_game)
-        self._drop_selector = self.add.dropselect(
+        self._game_selector = self.add.dropselect(
             title="Game id: ",
             items=self._game_ids,
             placeholder="Select a game id",
@@ -55,19 +63,24 @@ class LobbyMenu(pygame_menu.Menu):
         )
         self._join_button = self.add.button("Join", self._join_a_game)
         frame: Frame = self.add.frame_h(width=self._screen.get_size()[0], height=self._screen.get_size()[1])
-        frame.pack([self._drop_selector, self._join_button])
+        frame.pack([self._game_selector, self._join_button])
         self.mainloop(self._screen)
 
     def _change_id_selected(self, selected: Tuple):
         self._id_selected = int(selected[0])
 
+    def _change_symbol_selected(self, selected: Tuple):
+        self._symbol_selected = Symbol(selected[0])
+
     def _create_game(self):
-        InputHandler().post_event(ControlEvent.PLAYER_CREATE_GAME)
+        InputHandler().post_event(ControlEvent.PLAYER_CREATE_GAME, symbol=self._symbol_selected)
         self.close()
+        self.disable()
 
     def _join_a_game(self):
-        InputHandler().post_event(ControlEvent.PLAYER_JOIN_GAME, game_id=self._id_selected)
+        InputHandler().post_event(ControlEvent.PLAYER_JOIN_GAME, symbol=self._symbol_selected, game_id=self._id_selected)
         self.close()
+        self.disable()
 
     def init_game_ids(self):
         with open(GAME_IDS_FILE, "r") as file:
@@ -80,8 +93,18 @@ class LobbyMenu(pygame_menu.Menu):
 class ScreenTicTacToeView(TicTacToeView):
     def __init__(self, tic_tac_toe: TicTacToe, title: str, screen: Surface=None):
         super().__init__(tic_tac_toe)
+        self._title = title
         pygame.display.set_caption(title)
         self._screen = screen or pygame.display.set_mode(tic_tac_toe.size)
+
+    @property
+    def title(self) -> str:
+        return self._title
+
+    @title.setter
+    def title(self, value: str):
+        self._title = value
+        pygame.display.set_caption(self._title)
 
     def __getattr__(self, name: str):
         if not name.startswith("draw_"):

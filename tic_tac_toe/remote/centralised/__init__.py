@@ -302,9 +302,9 @@ class TicTacToeCoordinator(TicTacToeGame):
 
 class TicTacToeTerminal(TicTacToeGame):
 
-    def __init__(self, symbol: Symbol, settings: Settings=None):
+    def __init__(self, settings: Settings=None):
         settings = settings or Settings()
-        self.symbol = symbol
+        self.symbol: Symbol = None
         self.logger = logger("Terminal")
         super().__init__(settings)
         self.client = TcpClient(Address(host=self.settings.host or DEFAULT_HOST, port=self.settings.port or DEFAULT_PORT))
@@ -344,13 +344,17 @@ class TicTacToeTerminal(TicTacToeGame):
                             self.post_event(ControlEvent.PLAYER_LEAVE, symbol=terminal.symbol)
                     pygame.event.clear(self.INPUT_EVENTS)
 
-            def on_player_create_game(self):
+            def on_player_create_game(self, symbol: Symbol):
                 terminal.logger.debug(f"Requesting game creation from lobby")
-                self.post_event(LobbyEvent.CREATE_GAME, symbol=terminal.symbol)
+                terminal.symbol = symbol
+                terminal.view.title = f"Player {symbol.value}"
+                self.post_event(LobbyEvent.CREATE_GAME, symbol=symbol)
 
-            def on_player_join_game(self, game_id: int):
+            def on_player_join_game(self, symbol: Symbol, game_id: int):
                 terminal.logger.debug(f"Requesting join game {game_id} from lobby")
-                self.post_event(LobbyEvent.JOIN_GAME, game_id=game_id, symbol=terminal.symbol)
+                terminal.symbol = symbol
+                terminal.view.title = f"Player {symbol.value}"
+                self.post_event(LobbyEvent.JOIN_GAME, game_id=game_id, symbol=symbol)
 
             def on_change_turn(self, tic_tac_toe: TicTacToe):
                 tic_tac_toe.change_turn()
@@ -379,7 +383,7 @@ class TicTacToeTerminal(TicTacToeGame):
         return Controller(terminal.tic_tac_toe)
 
     def create_view(self):
-        return super().create_view(f"Player {self.symbol.value}")
+        return super().create_view()
 
     def _handle_ingoing_messages(self):
         while self.running:
@@ -446,6 +450,6 @@ def main_coordinator(game_id: int, connection: Connection, settings: Settings=No
     connection.close()
     coordinator.run()
 
-def main_terminal(symbol: Symbol, settings: Settings=None):
-    terminal = TicTacToeTerminal(symbol, settings)
+def main_terminal(settings: Settings=None):
+    terminal = TicTacToeTerminal(settings)
     LobbyMenu(settings.size, callback=terminal.run)
