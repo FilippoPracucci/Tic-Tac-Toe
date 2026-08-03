@@ -1,4 +1,4 @@
-import threading, json
+import threading
 from typing import List, Tuple
 import pygame
 import pygame_menu
@@ -16,8 +16,6 @@ GRID_LINE_WIDTH = 1
 LINE_WIDTH = 2
 CIRCLE_RADIUS = 60
 
-GAME_IDS_FILE = "games.json"
-
 class TicTacToeView:
     def __init__(self, tic_tac_toe: TicTacToe):
         self._tic_tac_toe = tic_tac_toe
@@ -30,10 +28,10 @@ class ShowNothingTicTacToeView(TicTacToeView):
         pass
 
 class LobbyMenu(pygame_menu.Menu):
-    def __init__(self, size: Tuple, callback=None):
+    def __init__(self, size: Tuple, callback=None, game_ids: List[int]=[]):
         pygame.init()
         self._lock = threading.RLock()
-        self._game_ids:List[str] = ["0"]
+        self._game_ids: List[int] = game_ids
         self._symbol_selected: Symbol = Symbol.CROSS
         self._id_selected = 0
         self._screen = pygame.display.set_mode(Vector2(size))
@@ -47,24 +45,38 @@ class LobbyMenu(pygame_menu.Menu):
         self.__setup()
 
     def __setup(self):
-        self.init_game_ids()
-        self._symbol_selector = self.add.dropselect(
+        self._selector_with_button(
             title="Symbol: ",
             items=list(map(lambda s: str(s.value), Symbol.values())),
             placeholder="Select a symbol",
-            onchange=self._change_symbol_selected
+            selector_onchange=self._change_symbol_selected,
+            button_title="Create a new game",
+            button_callback=self._create_game
         )
-        self._create_button = self.add.button("Create a new game", self._create_game)
-        self._game_selector = self.add.dropselect(
-            title="Game id: ",
-            items=self._game_ids,
-            placeholder="Select a game id",
-            onchange=self._change_id_selected
-        )
-        self._join_button = self.add.button("Join", self._join_a_game)
+        join_components = self._join_game_components()
         frame: Frame = self.add.frame_h(width=self._screen.get_size()[0], height=self._screen.get_size()[1])
-        frame.pack([self._game_selector, self._join_button])
+        frame.pack(join_components)
         self.mainloop(self._screen)
+
+    def _selector_with_button(self, title: str, items: List[str], placeholder: str, selector_onchange, button_title: str, button_callback):
+        selector = self.add.dropselect(
+            title=title,
+            items=items,
+            placeholder=placeholder,
+            onchange=selector_onchange
+        )
+        button = self.add.button(button_title, button_callback)
+        return selector, button
+
+    def _join_game_components(self):
+        return self._selector_with_button(
+            title="Game id: ",
+            items=[str(id) for id in self._game_ids],
+            placeholder="Select a game id",
+            selector_onchange=self._change_id_selected,
+            button_title="Join",
+            button_callback=self._join_a_game
+        ) if self._game_ids else self.add.label("No games available to join.")
 
     def _change_id_selected(self, selected: Tuple):
         self._id_selected = int(selected[0])
@@ -81,13 +93,6 @@ class LobbyMenu(pygame_menu.Menu):
         InputHandler().post_event(ControlEvent.PLAYER_JOIN_GAME, symbol=self._symbol_selected, game_id=self._id_selected)
         self.close()
         self.disable()
-
-    def init_game_ids(self):
-        with open(GAME_IDS_FILE, "r") as file:
-            try:
-                self._game_ids = list(map(lambda id: str(id), json.load(file)))
-            except:
-                self._game_ids = ["0"]
 
 
 class ScreenTicTacToeView(TicTacToeView):

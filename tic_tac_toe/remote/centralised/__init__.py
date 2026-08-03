@@ -1,6 +1,6 @@
 from datetime import datetime
 from multiprocessing import Process, Pipe
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List
 from pygame.event import Event
 import pygame
 from tic_tac_toe.log import logger
@@ -13,10 +13,11 @@ from tic_tac_toe.controller import LobbyEvent, ControlEvent
 from tic_tac_toe.remote.tcp import TcpClient, TcpConnection, TcpServer, Address
 from tic_tac_toe.remote.presentation import serialize, deserialize
 import threading, json, os
-from tic_tac_toe.view import LobbyMenu, GAME_IDS_FILE
+from tic_tac_toe.view import LobbyMenu
 
 DEFAULT_HOST = "localhost"
 DEFAULT_PORT = 12345
+GAME_IDS_FILE = "games.json"
 
 
 class LobbyCoordinator():
@@ -32,8 +33,7 @@ class LobbyCoordinator():
         self.__coordinators: dict[int, Address] = {}
         self.__processes: dict[int, Process] = {}
         self.__joinable_games: List[int] = []
-        with open(GAME_IDS_FILE, "w") as file:
-            file.write("")
+        open(GAME_IDS_FILE, "x")
 
     def create_controller(lobby_coordinator: 'LobbyCoordinator'):
         from tic_tac_toe.controller import LobbyEventHandler
@@ -76,9 +76,22 @@ class LobbyCoordinator():
                     if connection is not None:
                         connection.send(serialize({"error": error}))
 
+            def on_game_ids_available(self, **kwargs):
+                connection: TcpConnection = kwargs["connection"] if "connection" in kwargs else None
+                if connection is not None:
+                    self.__init_game_ids()
+                    connection.send(serialize({"game_ids": lobby_coordinator.joinable_games()}))
+
             def __update_games_id_db(self):
                 with open(GAME_IDS_FILE, "w") as file:
                     json.dump(lobby_coordinator.joinable_games(), file)
+
+            def __init_game_ids(self):
+                with open(GAME_IDS_FILE, "r") as file:
+                    try:
+                        self.joinable_games = list(map(lambda id: str(id), json.load(file)))
+                    except:
+                        self.joinable_games = []
 
         return Controller()
 
@@ -166,7 +179,9 @@ class LobbyCoordinator():
 
     def __handle_message(self, message: Any, **kwargs):
         self.logger.debug(f"Message: {message}")
-        if LobbyEvent.CREATE_GAME.matches(message) or LobbyEvent.JOIN_GAME.matches(message):
+        if LobbyEvent.CREATE_GAME.matches(message) or \
+            LobbyEvent.JOIN_GAME.matches(message) or \
+            LobbyEvent.REQUEST_GAME_IDS_AVAILABLE.matches(message):
             if "connection" in kwargs:
                 message.connection = kwargs["connection"]
         pygame.event.post(message)
@@ -281,8 +296,7 @@ class TicTacToeCoordinator(TicTacToeGame):
             case ConnectionEvent.CLOSE:
                 self.logger.debug(f"Connection with peer {connection.remote_address} closed")
                 self.remove_peer((connection.remote_address.host, connection.remote_address.port))
-                if self.tic_tac_toe.is_player_lobby_full():
-                    self.controller.post_event(ControlEvent.GAME_OVER, symbol=None)
+                self.controller.post_event(ControlEvent.GAME_OVER, symbol=None)
                 self.tic_tac_toe.players.clear()
             case ConnectionEvent.ERROR:
                 self.logger.debug(error)
@@ -305,15 +319,24 @@ class TicTacToeTerminal(TicTacToeGame):
     def __init__(self, settings: Settings=None):
         settings = settings or Settings()
         self.symbol: Symbol = None
-        self.logger = logger("Terminal")
         super().__init__(settings)
+        self.logger = logger("Terminal")
         self.client = TcpClient(Address(host=self.settings.host or DEFAULT_HOST, port=self.settings.port or DEFAULT_PORT))
         self.connected_to_coordinator = False
+        self.available_game_ids: List[int] = []
         self._lock = threading.RLock()
         self._thread_receiver = threading.Thread(target=self._handle_ingoing_messages, daemon=True)
         self._thread_receiver.start()
         self._thread_sender = threading.Thread(target=self._send_message, daemon=True)
         self._thread_sender.start()
+        self._game_ids_ready = threading.Event()
+        self.controller.post_event(LobbyEvent.REQUEST_GAME_IDS_AVAILABLE)
+
+    def wait_for_game_ids(self, timeout: float=None) -> List[int]:
+        if self._game_ids_ready.wait(timeout):
+            return self.available_game_ids
+        else:
+            raise TimeoutError("Timeout while waiting for game IDs")
 
     def create_controller(terminal: 'TicTacToeTerminal'):
         from tic_tac_toe.controller.local import TicTacToeInputHandler, EventHandler
@@ -372,6 +395,7 @@ class TicTacToeTerminal(TicTacToeGame):
                 elif tic_tac_toe.is_player_lobby_full():
                     print(f"You lost because you left the game!")
                 terminal.stop()
+                main_terminal(terminal.settings)
 
             def on_game_over(self, tic_tac_toe: TicTacToe, symbol: Symbol):
                 if symbol:
@@ -379,6 +403,7 @@ class TicTacToeTerminal(TicTacToeGame):
                 else:
                     print("Game ended")
                 terminal.stop()
+                main_terminal(terminal.settings)
 
         return Controller(terminal.tic_tac_toe)
 
@@ -408,6 +433,9 @@ class TicTacToeTerminal(TicTacToeGame):
         if "error" in message:
             self.logger.debug(message["error"])
             self.stop()
+        elif "game_ids" in message:
+            self.available_game_ids = message["game_ids"]
+            self._game_ids_ready.set()
         elif "coordinator" in message:
             coord_address = Address(message["coordinator"][0], message["coordinator"][1])
             self.logger.debug(f"Received coordinator address {coord_address}")
@@ -418,8 +446,6 @@ class TicTacToeTerminal(TicTacToeGame):
                 self.connected_to_coordinator = True
             self.controller.post_event(ControlEvent.PLAYER_JOIN, symbol=self.symbol)
 
-    def before_run(self):
-        super().before_run()
 
     def after_run(self):
         super().after_run()
@@ -452,4 +478,5 @@ def main_coordinator(game_id: int, connection: Connection, settings: Settings=No
 
 def main_terminal(settings: Settings=None):
     terminal = TicTacToeTerminal(settings)
-    LobbyMenu(settings.size, callback=terminal.run)
+    game_ids = terminal.wait_for_game_ids(timeout=5.0)
+    LobbyMenu(settings.size, callback=terminal.run, game_ids=game_ids)

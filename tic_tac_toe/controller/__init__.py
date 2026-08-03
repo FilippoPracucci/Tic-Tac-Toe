@@ -9,6 +9,7 @@ class LobbyEvent(Enum):
     CREATE_GAME = pygame.event.custom_type()
     DELETE_GAME = pygame.event.custom_type()
     JOIN_GAME = pygame.event.custom_type()
+    REQUEST_GAME_IDS_AVAILABLE = pygame.event.custom_type()
 
     @classmethod
     def all(cls) -> Set['LobbyEvent']:
@@ -144,6 +145,8 @@ class LobbyEventHandler:
                 self.on_delete_game(**event.dict)
             elif LobbyEvent.JOIN_GAME.matches(event):
                 self.on_join_game(**event.dict)
+            elif LobbyEvent.REQUEST_GAME_IDS_AVAILABLE.matches(event):
+                self.on_game_ids_available(**event.dict)
 
     def create_event(self, event: pygame.event.Event | LobbyEvent, **kwargs) -> pygame.event.Event:
         return create_event(event, **kwargs)
@@ -158,6 +161,9 @@ class LobbyEventHandler:
         pass
 
     def on_join_game(self, game_id: int, **kwargs):
+        pass
+
+    def on_request_game_ids_available(self, **kwargs):
         pass
 
 class EventHandler:
