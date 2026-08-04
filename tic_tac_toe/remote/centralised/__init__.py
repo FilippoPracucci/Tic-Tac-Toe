@@ -1,5 +1,6 @@
 from datetime import datetime
 from multiprocessing import Process, Pipe
+from queue import Queue
 from typing import Any, Dict, Iterable, List
 from pygame.event import Event
 import pygame
@@ -33,6 +34,7 @@ class LobbyCoordinator():
         self.__coordinators: dict[int, Address] = {}
         self.__processes: dict[int, Process] = {}
         self.__joinable_games: List[int] = []
+        self.__game_ids_subscribers: Dict[Address, TcpConnection] = {}
         open(GAME_IDS_FILE, "x")
 
     def create_controller(lobby_coordinator: 'LobbyCoordinator'):
@@ -52,7 +54,7 @@ class LobbyCoordinator():
                 lobby_coordinator.add_process(game_id, process)
                 lobby_coordinator.add_coordinator(game_id, coordinator_address)
                 lobby_coordinator.add_joinable_game(game_id)
-                self.__update_games_id_db()
+                self.__update_and_broadcast_game_ids()
                 if "connection" in kwargs:
                     connection: TcpConnection = kwargs["connection"]
                     connection.send(serialize({"coordinator": (connection.local_address.ip, coordinator_address.port)}))
@@ -61,12 +63,12 @@ class LobbyCoordinator():
                 lobby_coordinator.remove_coordinator_by_id(game_id)
                 lobby_coordinator.kill_process_by_id(game_id)
                 lobby_coordinator.remove_joinable_game(game_id)
-                self.__update_games_id_db()
+                self.__update_and_broadcast_game_ids()
 
             def on_join_game(self, game_id: int, **kwargs):
                 connection: TcpConnection = kwargs["connection"] if "connection" in kwargs else None
                 lobby_coordinator.remove_joinable_game(game_id)
-                self.__update_games_id_db()
+                self.__update_and_broadcast_game_ids()
                 if game_id in lobby_coordinator.game_ids():
                     if connection is not None:
                         connection.send(serialize({"coordinator": (connection.local_address.ip, lobby_coordinator.coordinators[game_id].port)}))
@@ -76,15 +78,27 @@ class LobbyCoordinator():
                     if connection is not None:
                         connection.send(serialize({"error": error}))
 
-            def on_game_ids_available(self, **kwargs):
+            def on_request_joinable_game_ids(self, **kwargs):
                 connection: TcpConnection = kwargs["connection"] if "connection" in kwargs else None
                 if connection is not None:
                     self.__init_game_ids()
                     connection.send(serialize({"game_ids": lobby_coordinator.joinable_games()}))
+                    lobby_coordinator.add_game_ids_subscriber(connection)
+
+            def __broadcast_game_ids(self):
+                for connection in lobby_coordinator.game_ids_subscribers():
+                    try:
+                        connection.send(serialize({"game_ids": lobby_coordinator.joinable_games()}))
+                    except Exception as e:
+                        lobby_coordinator.logger.debug(f"Error while broadcasting game IDs to {connection.remote_address}")
 
             def __update_games_id_db(self):
                 with open(GAME_IDS_FILE, "w") as file:
                     json.dump(lobby_coordinator.joinable_games(), file)
+
+            def __update_and_broadcast_game_ids(self):
+                self.__update_games_id_db()
+                self.__broadcast_game_ids()
 
             def __init_game_ids(self):
                 with open(GAME_IDS_FILE, "r") as file:
@@ -137,6 +151,19 @@ class LobbyCoordinator():
             if process is not None and process.is_alive():
                 process.kill()
 
+    def add_game_ids_subscriber(self, connection: TcpConnection):
+        with self._lock:
+            self.__game_ids_subscribers[connection.remote_address] = connection
+
+    def remove_game_ids_subscriber_by_address(self, address: Address):
+        with self._lock:
+            if address in self.__game_ids_subscribers:
+                self.__game_ids_subscribers.pop(address)
+
+    def game_ids_subscribers(self) -> List[TcpConnection]:
+        with self._lock:
+            return list(self.__game_ids_subscribers.values())
+
     def before_run(self):
         pygame.init()
 
@@ -174,14 +201,16 @@ class LobbyCoordinator():
                     self.__handle_message(deserialize(payload), connection=connection)
             case ConnectionEvent.CLOSE:
                 self.logger.debug(f"Connection with coordinator {connection.remote_address} closed")
+                self.remove_game_ids_subscriber_by_address(connection.remote_address)
             case ConnectionEvent.ERROR:
                 self.logger.debug(error)
+                self.remove_game_ids_subscriber_by_address(connection.remote_address)
 
     def __handle_message(self, message: Any, **kwargs):
         self.logger.debug(f"Message: {message}")
         if LobbyEvent.CREATE_GAME.matches(message) or \
             LobbyEvent.JOIN_GAME.matches(message) or \
-            LobbyEvent.REQUEST_GAME_IDS_AVAILABLE.matches(message):
+            LobbyEvent.REQUEST_JOINABLE_GAME_IDS.matches(message):
             if "connection" in kwargs:
                 message.connection = kwargs["connection"]
         pygame.event.post(message)
@@ -323,20 +352,22 @@ class TicTacToeTerminal(TicTacToeGame):
         self.logger = logger("Terminal")
         self.client = TcpClient(Address(host=self.settings.host or DEFAULT_HOST, port=self.settings.port or DEFAULT_PORT))
         self.connected_to_coordinator = False
-        self.available_game_ids: List[int] = []
+        self.joinable_game_ids: List[int] = []
+        self.game_ids_updates: Queue[List[str]] = Queue()
         self._lock = threading.RLock()
         self._thread_receiver = threading.Thread(target=self._handle_ingoing_messages, daemon=True)
         self._thread_receiver.start()
         self._thread_sender = threading.Thread(target=self._send_message, daemon=True)
         self._thread_sender.start()
-        self._game_ids_ready = threading.Event()
-        self.controller.post_event(LobbyEvent.REQUEST_GAME_IDS_AVAILABLE)
+        self.controller.post_event(LobbyEvent.REQUEST_JOINABLE_GAME_IDS)
 
     def wait_for_game_ids(self, timeout: float=None) -> List[int]:
-        if self._game_ids_ready.wait(timeout):
-            return self.available_game_ids
-        else:
-            raise TimeoutError("Timeout while waiting for game IDs")
+        try:
+            ids = self.game_ids_updates.get(timeout=timeout)
+            self.joinable_game_ids = ids
+            return ids
+        except Exception as e:
+            self.logger.error(f"Error while waiting for game IDs: {e}")
 
     def create_controller(terminal: 'TicTacToeTerminal'):
         from tic_tac_toe.controller.local import TicTacToeInputHandler, EventHandler
@@ -434,8 +465,8 @@ class TicTacToeTerminal(TicTacToeGame):
             self.logger.debug(message["error"])
             self.stop()
         elif "game_ids" in message:
-            self.available_game_ids = message["game_ids"]
-            self._game_ids_ready.set()
+            self.joinable_game_ids = message["game_ids"]
+            self.game_ids_updates.put(self.joinable_game_ids)
         elif "coordinator" in message:
             coord_address = Address(message["coordinator"][0], message["coordinator"][1])
             self.logger.debug(f"Received coordinator address {coord_address}")
@@ -479,4 +510,4 @@ def main_coordinator(game_id: int, connection: Connection, settings: Settings=No
 def main_terminal(settings: Settings=None):
     terminal = TicTacToeTerminal(settings)
     game_ids = terminal.wait_for_game_ids(timeout=5.0)
-    LobbyMenu(settings.size, callback=terminal.run, game_ids=game_ids)
+    LobbyMenu(settings.size, callback=terminal.run, game_ids=game_ids, updates_queue=terminal.game_ids_updates)

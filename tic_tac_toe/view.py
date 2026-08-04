@@ -1,3 +1,4 @@
+from queue import Queue, Empty
 import threading
 from typing import List, Tuple
 import pygame
@@ -6,6 +7,7 @@ from pygame_menu import themes
 from pygame_menu.widgets.widget.dropselect import DropSelect
 from pygame_menu.widgets.widget.button import Button
 from pygame_menu.widgets.widget.frame import Frame
+from pygame_menu.widgets.widget.label import Label
 from pygame import Vector2, draw, Surface
 from tic_tac_toe.controller import ControlEvent, InputHandler
 from tic_tac_toe.model import TicTacToe, Symbol, Mark
@@ -28,55 +30,72 @@ class ShowNothingTicTacToeView(TicTacToeView):
         pass
 
 class LobbyMenu(pygame_menu.Menu):
-    def __init__(self, size: Tuple, callback=None, game_ids: List[int]=[]):
+    def __init__(self, size: Tuple, callback=None, game_ids: List[int]=[], updates_queue: Queue=None):
         pygame.init()
         self._lock = threading.RLock()
         self._game_ids: List[int] = game_ids
+        self._updates_queue: Queue = updates_queue
         self._symbol_selected: Symbol = Symbol.CROSS
-        self._id_selected = 0
+        self._id_selected: int = 0
         self._screen = pygame.display.set_mode(Vector2(size))
         super().__init__("TicTacToe", size[0], size[1], theme=themes.THEME_BLUE)
+        self._join_frame: Frame = None
         self._menubar._backbox = False
         self.set_onclose(callback)
-        self._symbol_selector: DropSelect = None
-        self._create_button: Button = None
         self._game_selector: DropSelect = None
         self._join_button: Button = None
+        self._no_games_label: Label = None
         self.__setup()
 
     def __setup(self):
-        self._selector_with_button(
+        self.add.dropselect(
             title="Symbol: ",
             items=list(map(lambda s: str(s.value), Symbol.values())),
             placeholder="Select a symbol",
-            selector_onchange=self._change_symbol_selected,
-            button_title="Create a new game",
-            button_callback=self._create_game
+            onchange=self._change_symbol_selected
         )
-        join_components = self._join_game_components()
-        frame: Frame = self.add.frame_h(width=self._screen.get_size()[0], height=self._screen.get_size()[1])
-        frame.pack(join_components)
-        self.mainloop(self._screen)
+        self.add.button("Create a new game", action=self._create_game)
+        self._join_frame = self.add.frame_h(width=self._screen.get_size()[0], height=self._screen.get_size()[1])
+        self._populate_join_section(self._game_ids)
+        self.mainloop(self._screen, bgfun=self._poll_updates if self._updates_queue else None)
 
-    def _selector_with_button(self, title: str, items: List[str], placeholder: str, selector_onchange, button_title: str, button_callback):
-        selector = self.add.dropselect(
-            title=title,
-            items=items,
-            placeholder=placeholder,
-            onchange=selector_onchange
-        )
-        button = self.add.button(button_title, button_callback)
-        return selector, button
+    def _poll_updates(self):
+        try:
+            new_ids = self._updates_queue.get_nowait()
+        except Empty:
+            return
+        if new_ids != self._game_ids:
+            self._refresh_join_section(new_ids)
 
-    def _join_game_components(self):
-        return self._selector_with_button(
-            title="Game id: ",
-            items=[str(id) for id in self._game_ids],
-            placeholder="Select a game id",
-            selector_onchange=self._change_id_selected,
-            button_title="Join",
-            button_callback=self._join_a_game
-        ) if self._game_ids else self.add.label("No games available to join.")
+    def _refresh_join_section(self, new_game_ids: List[int]):
+        self._game_ids = new_game_ids
+        self._id_selected = 0
+        for widget in (self._game_selector, self._join_button, self._no_games_label):
+            if widget is not None:
+                try:
+                    self._join_frame.unpack(widget)
+                except ValueError:
+                    pass
+                self.remove_widget(widget)
+        self._game_selector = None
+        self._join_button = None
+        self._no_games_label = None
+        self._populate_join_section(self._game_ids)
+        self._join_frame.force_menu_surface_update()
+
+    def _populate_join_section(self, game_ids: List[str]):
+        if game_ids:
+            self._game_selector = self.add.dropselect(
+                title="Game id: ",
+                items=[str(id) for id in game_ids],
+                placeholder="Select a game id",
+                onchange=self._change_id_selected
+            )
+            self._join_button = self.add.button("Join", self._join_a_game)
+            self._join_frame.pack([self._game_selector, self._join_button])
+        else:
+            self._no_games_label = self.add.label("No games available to join.")
+            self._join_frame.pack(self._no_games_label)
 
     def _change_id_selected(self, selected: Tuple):
         self._id_selected = int(selected[0])
