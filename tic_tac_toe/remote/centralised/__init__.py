@@ -31,9 +31,9 @@ class LobbyCoordinator():
         self.clock = pygame.time.Clock()
         self.running = True
         self._lock = threading.RLock()
-        self.__coordinators: dict[int, Address] = {}
-        self.__processes: dict[int, Process] = {}
-        self.__joinable_games: List[int] = []
+        self.__coordinators: Dict[int, Address] = {}
+        self.__processes: Dict[int, Process] = {}
+        self.__joinable_games: Dict[int, str] = {}
         self.__game_ids_subscribers: Dict[Address, TcpConnection] = {}
         open(GAME_IDS_FILE, "x")
 
@@ -53,7 +53,8 @@ class LobbyCoordinator():
                 coordinator_address = lobby_connection.recv()
                 lobby_coordinator.add_process(game_id, process)
                 lobby_coordinator.add_coordinator(game_id, coordinator_address)
-                lobby_coordinator.add_joinable_game(game_id)
+                if "symbol" in kwargs:
+                    lobby_coordinator.add_joinable_game(game_id, str(self.__opposite_symbol(kwargs["symbol"]).value))
                 self.__update_and_broadcast_game_ids()
                 if "connection" in kwargs:
                     connection: TcpConnection = kwargs["connection"]
@@ -103,9 +104,12 @@ class LobbyCoordinator():
             def __init_game_ids(self):
                 with open(GAME_IDS_FILE, "r") as file:
                     try:
-                        self.joinable_games = list(map(lambda id: str(id), json.load(file)))
+                        self.joinable_games = dict(map(lambda k, v: (int(k), str(self.__opposite_symbol(Symbol(v)).value)), json.load(file)))
                     except:
                         self.joinable_games = []
+
+            def __opposite_symbol(self, symbol: Symbol) -> Symbol:
+                return Symbol.NOUGHT if symbol.is_cross else Symbol.CROSS
 
         return Controller()
 
@@ -122,16 +126,16 @@ class LobbyCoordinator():
     def game_ids(self) -> List[int]:
         return list(self.coordinators.keys())
 
-    def joinable_games(self) -> List[int]:
+    def joinable_games(self) -> Dict[int, str]:
         return self.__joinable_games
 
-    def add_joinable_game(self, game_id: int):
+    def add_joinable_game(self, game_id: int, symbol: str):
         with self._lock:
-            self.__joinable_games.append(game_id)
+            self.__joinable_games[game_id] = symbol
 
     def remove_joinable_game(self, game_id: int):
         with self._lock:
-            self.__joinable_games.remove(game_id)
+            self.__joinable_games.pop(game_id)
 
     def add_coordinator(self, game_id: int, address: Address):
         with self._lock:
@@ -352,8 +356,8 @@ class TicTacToeTerminal(TicTacToeGame):
         self.logger = logger("Terminal")
         self.client = TcpClient(Address(host=self.settings.host or DEFAULT_HOST, port=self.settings.port or DEFAULT_PORT))
         self.connected_to_coordinator = False
-        self.joinable_game_ids: List[int] = []
-        self.game_ids_updates: Queue[List[str]] = Queue()
+        self.joinable_game_ids: Dict[int, str] = {}
+        self.joinable_games_updates: Queue[Dict[int, str]] = Queue()
         self._lock = threading.RLock()
         self._thread_receiver = threading.Thread(target=self._handle_ingoing_messages, daemon=True)
         self._thread_receiver.start()
@@ -361,9 +365,9 @@ class TicTacToeTerminal(TicTacToeGame):
         self._thread_sender.start()
         self.controller.post_event(LobbyEvent.REQUEST_JOINABLE_GAME_IDS)
 
-    def wait_for_game_ids(self, timeout: float=None) -> List[int]:
+    def wait_for_game_ids(self, timeout: float=None) -> Dict[int, str]:
         try:
-            ids = self.game_ids_updates.get(timeout=timeout)
+            ids = self.joinable_games_updates.get(timeout=timeout)
             self.joinable_game_ids = ids
             return ids
         except Exception as e:
@@ -466,7 +470,7 @@ class TicTacToeTerminal(TicTacToeGame):
             self.stop()
         elif "game_ids" in message:
             self.joinable_game_ids = message["game_ids"]
-            self.game_ids_updates.put(self.joinable_game_ids)
+            self.joinable_games_updates.put(self.joinable_game_ids)
         elif "coordinator" in message:
             coord_address = Address(message["coordinator"][0], message["coordinator"][1])
             self.logger.debug(f"Received coordinator address {coord_address}")
@@ -499,9 +503,11 @@ class TicTacToeTerminal(TicTacToeGame):
 
 
 def main_lobby(settings: Settings=None):
+    os.environ["SDL_VIDEODRIVER"] = "dummy"
     LobbyCoordinator(settings).run()
 
 def main_coordinator(game_id: int, connection: Connection, settings: Settings=None):
+    os.environ["SDL_VIDEODRIVER"] = "dummy"
     coordinator = TicTacToeCoordinator(game_id, settings)
     connection.send(coordinator.server.address)
     connection.close()
@@ -509,5 +515,5 @@ def main_coordinator(game_id: int, connection: Connection, settings: Settings=No
 
 def main_terminal(settings: Settings=None):
     terminal = TicTacToeTerminal(settings)
-    game_ids = terminal.wait_for_game_ids(timeout=5.0)
-    LobbyMenu(settings.size, callback=terminal.run, game_ids=game_ids, updates_queue=terminal.game_ids_updates)
+    joinable_games = terminal.wait_for_game_ids(timeout=5.0)
+    LobbyMenu(settings.size, callback=terminal.run, joinable_games=joinable_games, updates_queue=terminal.joinable_games_updates)
