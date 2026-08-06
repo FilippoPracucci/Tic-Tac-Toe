@@ -1,7 +1,7 @@
 from datetime import datetime
-from multiprocessing import Process, Pipe
+from multiprocessing import Pipe, Pool
 from queue import Queue
-from typing import Any, Dict, Iterable, List
+from typing import Any, Dict, Iterable, List, Optional
 from pygame.event import Event
 import pygame
 from tic_tac_toe.log import logger
@@ -30,9 +30,9 @@ class LobbyCoordinator():
         self.server = TcpServer(self.settings.port or DEFAULT_PORT, self._on_new_connection)
         self.clock = pygame.time.Clock()
         self.running = True
+        self._processes_pool = Pool()
         self._lock = threading.RLock()
         self.__coordinators: Dict[int, Address] = {}
-        self.__processes: Dict[int, Process] = {}
         self.__joinable_games: Dict[int, str] = {}
         self.__game_ids_subscribers: Dict[Address, TcpConnection] = {}
         open(GAME_IDS_FILE, "x")
@@ -44,14 +44,12 @@ class LobbyCoordinator():
             def on_create_game(self, **kwargs):
                 game_id = max(lobby_coordinator.game_ids(), default=0) + 1
                 lobby_connection, coordinator_connection = Pipe()
-                process: Process = Process(
-                    target=main_coordinator,
+                lobby_coordinator._processes_pool.apply_async(
+                    func=main_coordinator,
                     args=(game_id, coordinator_connection, lobby_coordinator.settings),
-                    daemon=True
+                    callback=lambda _: self.on_delete_game(game_id)
                 )
-                process.start()
                 coordinator_address = lobby_connection.recv()
-                lobby_coordinator.add_process(game_id, process)
                 lobby_coordinator.add_coordinator(game_id, coordinator_address)
                 if "symbol" in kwargs:
                     lobby_coordinator.add_joinable_game(game_id, str(self.__opposite_symbol(kwargs["symbol"]).value))
@@ -62,7 +60,6 @@ class LobbyCoordinator():
 
             def on_delete_game(self, game_id: int):
                 lobby_coordinator.remove_coordinator_by_id(game_id)
-                lobby_coordinator.kill_process_by_id(game_id)
                 lobby_coordinator.remove_joinable_game(game_id)
                 self.__update_and_broadcast_game_ids()
 
@@ -144,16 +141,6 @@ class LobbyCoordinator():
     def remove_coordinator_by_id(self, game_id: int):
         with self._lock:
             self.__coordinators.pop(game_id)
-
-    def add_process(self, game_id: int, process: Process):
-        with self._lock:
-            self.__processes.update({game_id: process})
-
-    def kill_process_by_id(self, game_id: int):
-        with self._lock:
-            process: Process = self.__processes.pop(game_id, default=None)
-            if process is not None and process.is_alive():
-                process.kill()
 
     def add_game_ids_subscriber(self, connection: TcpConnection):
         with self._lock:
@@ -257,10 +244,10 @@ class TicTacToeCoordinator(TicTacToeGame):
                         connection.send(serialize({"error": str(exception)}))
 
             def on_player_leave(self, tic_tac_toe: TicTacToe, symbol: Symbol):
-                self.on_game_over(tic_tac_toe, symbol=None)
+                self.on_game_over(tic_tac_toe)
 
-            def on_game_over(self, tic_tac_toe: TicTacToe, symbol: Symbol):
-                super().on_game_over(tic_tac_toe, symbol)
+            def on_game_over(self, tic_tac_toe: TicTacToe, **kwargs):
+                super().on_game_over(tic_tac_toe, **kwargs)
                 self.post_event(LobbyEvent.DELETE_GAME, game_id=coordinator.game_id)
                 coordinator.stop()
 
@@ -272,7 +259,7 @@ class TicTacToeCoordinator(TicTacToeGame):
                 if game_over_events:
                     event = game_over_events.pop()
                     coordinator._broadcast_to_all_peers(event)
-                    self.on_game_over(tic_tac_toe=self._tic_tac_toe, symbol=event.symbol)
+                    self.on_game_over(tic_tac_toe=self._tic_tac_toe, **event.dict)
                 super().handle_events()
 
         return Controller(coordinator.tic_tac_toe)
@@ -306,7 +293,7 @@ class TicTacToeCoordinator(TicTacToeGame):
     def _broadcast_to_all_peers(self, message: Any):
         event = serialize(message)
         for peer in self.peers:
-                self.server.connections[peer].send(event)
+            self.server.connections[peer].send(event)
 
     def _on_new_connection(self, event: ServerEvent, connection: TcpConnection, address: Address, error: Exception):
         match event:
@@ -329,7 +316,7 @@ class TicTacToeCoordinator(TicTacToeGame):
             case ConnectionEvent.CLOSE:
                 self.logger.debug(f"Connection with peer {connection.remote_address} closed")
                 self.remove_peer((connection.remote_address.host, connection.remote_address.port))
-                self.controller.post_event(ControlEvent.GAME_OVER, symbol=None)
+                self.controller.post_event(ControlEvent.GAME_OVER)
                 self.tic_tac_toe.players.clear()
             case ConnectionEvent.ERROR:
                 self.logger.debug(error)
@@ -432,11 +419,11 @@ class TicTacToeTerminal(TicTacToeGame):
                 terminal.stop()
                 main_terminal(terminal.settings)
 
-            def on_game_over(self, tic_tac_toe: TicTacToe, symbol: Symbol):
-                if symbol:
-                    print(f"You won!" if symbol == terminal.symbol else f"You lost!")
+            def on_game_over(self, tic_tac_toe: TicTacToe, **kwargs):
+                if "symbol" in kwargs:
+                    print(f"You won!" if kwargs["symbol"] == terminal.symbol else f"You lost!")
                 else:
-                    print("Game ended")
+                    print("Game ended unexpectedly")
                 terminal.stop()
                 main_terminal(terminal.settings)
 
@@ -454,7 +441,7 @@ class TicTacToeTerminal(TicTacToeGame):
             except ConnectionResetError:
                 if self.running:
                     self.logger.debug(f"Coordinator stopped")
-                    self.controller.on_game_over(self.tic_tac_toe, None)
+                    self.controller.on_game_over(self.tic_tac_toe)
 
     def __handle_message(self, message: Any):
         if isinstance(message, pygame.event.Event):

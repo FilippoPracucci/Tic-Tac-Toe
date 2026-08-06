@@ -42,11 +42,11 @@ class TicTacToeEventHandler(EventHandler):
     def on_game_start(self, tic_tac_toe: TicTacToe):
         pass
 
-    def on_game_over(self, tic_tac_toe: TicTacToe, symbol: Symbol):
-        if not symbol:
-            print("Game ended because a player left")
+    def on_game_over(self, tic_tac_toe: TicTacToe, **kwargs):
+        if "symbol" in kwargs:
+            print(f"Player '{kwargs['symbol'].value}' has won!")
         else:
-            print(f"Player '{symbol.value}' has won!")
+            print("Game ended because a player left")
 
     def on_mark_placed(self, tic_tac_toe: TicTacToe, cell: Cell, symbol: Symbol):
         if tic_tac_toe.turn == symbol:

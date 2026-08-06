@@ -208,7 +208,7 @@ class EventHandler:
     def on_game_start(self, tic_tac_toe: TicTacToe):
         pass
 
-    def on_game_over(self, tic_tac_toe: TicTacToe, symbol: Symbol):
+    def on_game_over(self, tic_tac_toe: TicTacToe, **kwargs):
         pass
 
     def on_mark_placed(self, tic_tac_toe: TicTacToe, cell: Cell, symbol: Symbol):
