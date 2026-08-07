@@ -30,23 +30,42 @@ class ShowNothingTicTacToeView(TicTacToeView):
         pass
 
 class LobbyMenu(pygame_menu.Menu):
-    def __init__(self, size: Tuple, callback=None, joinable_games: Dict[int, str]={}, updates_queue: Queue=None):
+    def __init__(self, size: Tuple):
         pygame.init()
         self._lock = threading.RLock()
-        self._joinable_games: Dict[int, str] = joinable_games
-        self._updates_queue: Queue = updates_queue
+        self._joinable_games: Dict[int, str] = {}
+        self._updates_queue: Queue = None
         self._symbol_selected: Symbol = Symbol.CROSS
         self._id_selected: Optional[int] = None
         self._screen = pygame.display.set_mode(Vector2(size))
         super().__init__("TicTacToe", size[0], size[1], theme=themes.THEME_BLUE)
         self._join_frame: Frame = None
         self._menubar._backbox = False
-        self.set_onclose(callback)
+        self._callback_on_create_game: callable = None
+        self._callback_on_join_game: callable = None
         self._symbol_selector: DropSelect = None
         self._game_selector: DropSelect = None
         self._join_button: Button = None
         self._no_games_label: Label = None
+
+    def start(
+        self,
+        callback_on_create_game: callable,
+        callback_on_join_game: callable,
+        joinable_games: Dict[int, str]={},
+        updates_queue: Queue=None
+    ):
+        self._joinable_games = joinable_games
+        self._updates_queue = updates_queue
+        self._callback_on_create_game = callback_on_create_game
+        self._callback_on_join_game = callback_on_join_game
+        self.enable()
         self.__setup()
+        self.mainloop(self._screen, bgfun=self._poll_updates if self._updates_queue else None)
+
+    def stop(self):
+        self.close()
+        self.disable()
 
     def __setup(self):
         self._symbol_selector = self.add.dropselect(
@@ -58,7 +77,6 @@ class LobbyMenu(pygame_menu.Menu):
         self.add.button("Create a new game", action=self._create_game)
         self._join_frame = self.add.frame_h(width=self._screen.get_size()[0], height=self._screen.get_size()[1])
         self._populate_join_section()
-        self.mainloop(self._screen, bgfun=self._poll_updates if self._updates_queue else None)
 
     def _poll_updates(self):
         try:
@@ -106,14 +124,12 @@ class LobbyMenu(pygame_menu.Menu):
         self._symbol_selected = Symbol(selected[0])
 
     def _create_game(self):
-        InputHandler().post_event(ControlEvent.PLAYER_CREATE_GAME, symbol=self._symbol_selected)
-        self.close()
-        self.disable()
+        self._callback_on_create_game(self._symbol_selected)
+        self.stop()
 
     def _join_a_game(self):
-        InputHandler().post_event(ControlEvent.PLAYER_JOIN_GAME, symbol=self._symbol_selected, game_id=self._id_selected)
-        self.close()
-        self.disable()
+        self._callback_on_join_game(self._symbol_selected, self._id_selected)
+        self.stop()
 
 
 class ScreenTicTacToeView(TicTacToeView):

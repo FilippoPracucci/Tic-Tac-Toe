@@ -1,7 +1,7 @@
 from datetime import datetime
 from multiprocessing import Pipe, Pool
 from queue import Queue
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List
 from pygame.event import Event
 import pygame
 from tic_tac_toe.log import logger
@@ -336,15 +336,16 @@ class TicTacToeCoordinator(TicTacToeGame):
 
 class TicTacToeTerminal(TicTacToeGame):
 
-    def __init__(self, settings: Settings=None):
+    def __init__(self, settings: Settings=None, lobby_menu: LobbyMenu=None):
         settings = settings or Settings()
         self.symbol: Symbol = None
-        super().__init__(settings)
-        self.logger = logger("Terminal")
-        self.client = TcpClient(Address(host=self.settings.host or DEFAULT_HOST, port=self.settings.port or DEFAULT_PORT))
         self.connected_to_coordinator = False
         self.joinable_game_ids: Dict[int, str] = {}
         self.joinable_games_updates: Queue[Dict[int, str]] = Queue()
+        self._lobby_menu: LobbyMenu = lobby_menu
+        super().__init__(settings)
+        self.logger = logger("Terminal")
+        self.client = TcpClient(Address(host=self.settings.host or DEFAULT_HOST, port=self.settings.port or DEFAULT_PORT))
         self._lock = threading.RLock()
         self._thread_receiver = threading.Thread(target=self._handle_ingoing_messages, daemon=True)
         self._thread_receiver.start()
@@ -416,21 +417,19 @@ class TicTacToeTerminal(TicTacToeGame):
                     print(f"You won because player '{symbol.value}' has left the game!")
                 elif tic_tac_toe.is_player_lobby_full():
                     print(f"You lost because you left the game!")
-                terminal.stop()
-                main_terminal(terminal.settings)
+                terminal.restart()
 
             def on_game_over(self, tic_tac_toe: TicTacToe, **kwargs):
                 if "symbol" in kwargs:
                     print(f"You won!" if kwargs["symbol"] == terminal.symbol else f"You lost!")
+                    terminal.restart()
                 else:
                     print("Game ended unexpectedly")
-                terminal.stop()
-                main_terminal(terminal.settings)
+                    if terminal._lobby_menu is not None:
+                        terminal._lobby_menu.stop()
+                    terminal.stop()
 
         return Controller(terminal.tic_tac_toe)
-
-    def create_view(self):
-        return super().create_view()
 
     def _handle_ingoing_messages(self):
         while self.running:
@@ -468,6 +467,24 @@ class TicTacToeTerminal(TicTacToeGame):
                 self.connected_to_coordinator = True
             self.controller.post_event(ControlEvent.PLAYER_JOIN, symbol=self.symbol)
 
+    def _callback_on_create_game(self, selected_symbol: Symbol):
+        self.controller.post_event(ControlEvent.PLAYER_CREATE_GAME, symbol=selected_symbol)
+        self._lobby_menu = None
+
+    def _callback_on_join_game(self, selected_symbol: Symbol, selected_game_id: int):
+        self.controller.post_event(ControlEvent.PLAYER_JOIN_GAME, symbol=selected_symbol, game_id=selected_game_id)
+        self._lobby_menu = None
+
+    def before_run(self):
+        super().before_run()
+        if self._lobby_menu is not None:
+            self.wait_for_game_ids(timeout=5)
+            self._lobby_menu.start(
+                callback_on_create_game=self._callback_on_create_game,
+                callback_on_join_game=self._callback_on_join_game,
+                joinable_games=self.joinable_game_ids,
+                updates_queue=self.joinable_games_updates
+            )
 
     def after_run(self):
         super().after_run()
@@ -488,6 +505,10 @@ class TicTacToeTerminal(TicTacToeGame):
             timestamp = datetime.now()
         return f"[{timestamp.isoformat(timespec="minutes")}] {sender}: {text.strip()}"
 
+    def restart(self):
+        self.stop()
+        main_terminal(self.settings)
+
 
 def main_lobby(settings: Settings=None):
     os.environ["SDL_VIDEODRIVER"] = "dummy"
@@ -501,6 +522,5 @@ def main_coordinator(game_id: int, connection: Connection, settings: Settings=No
     coordinator.run()
 
 def main_terminal(settings: Settings=None):
-    terminal = TicTacToeTerminal(settings)
-    joinable_games = terminal.wait_for_game_ids(timeout=5.0)
-    LobbyMenu(settings.size, callback=terminal.run, joinable_games=joinable_games, updates_queue=terminal.joinable_games_updates)
+    lobby_menu = LobbyMenu(size=settings.size)
+    TicTacToeTerminal(settings, lobby_menu).run()
