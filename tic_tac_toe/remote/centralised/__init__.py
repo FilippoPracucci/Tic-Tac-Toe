@@ -336,13 +336,14 @@ class TicTacToeCoordinator(TicTacToeGame):
 
 class TicTacToeTerminal(TicTacToeGame):
 
-    def __init__(self, settings: Settings=None, lobby_menu: LobbyMenu=None):
+    def __init__(self, settings: Settings=None, lobby_menu: LobbyMenu=None, message_to_show: str=None):
         settings = settings or Settings()
         self.symbol: Symbol = None
         self.connected_to_coordinator = False
         self.joinable_game_ids: Dict[int, str] = {}
         self.joinable_games_updates: Queue[Dict[int, str]] = Queue()
         self._lobby_menu: LobbyMenu = lobby_menu
+        self._message_to_show: str = message_to_show
         super().__init__(settings)
         self.logger = logger("Terminal")
         self.client = TcpClient(Address(host=self.settings.host or DEFAULT_HOST, port=self.settings.port or DEFAULT_PORT))
@@ -414,17 +415,21 @@ class TicTacToeTerminal(TicTacToeGame):
 
             def on_player_leave(self, tic_tac_toe: TicTacToe, symbol: Symbol):
                 if symbol != terminal.symbol:
-                    print(f"You won because player '{symbol.value}' has left the game!")
+                    terminal._message_to_show = f"You won because other player left the game!"
                 elif tic_tac_toe.is_player_lobby_full():
-                    print(f"You lost because you left the game!")
+                    terminal._message_to_show = f"You lost because you left the game!"
+                if terminal._message_to_show is not None:
+                    print(terminal._message_to_show)
                 terminal.restart()
 
             def on_game_over(self, tic_tac_toe: TicTacToe, **kwargs):
                 if "symbol" in kwargs:
-                    print(f"You won!" if kwargs["symbol"] == terminal.symbol else f"You lost!")
+                    terminal._message_to_show = f"You won!" if kwargs["symbol"] == terminal.symbol else f"You lost!"
+                    print(terminal._message_to_show)
                     terminal.restart()
                 else:
-                    print("Game ended unexpectedly")
+                    error_cause_message = terminal._message_to_show if terminal._message_to_show is not None else 'unexpected error'
+                    print(f"Game ended: {error_cause_message}")
                     if terminal._lobby_menu is not None:
                         terminal._lobby_menu.stop()
                     terminal.stop()
@@ -439,7 +444,8 @@ class TicTacToeTerminal(TicTacToeGame):
                     self.__handle_message(deserialize(message))
             except ConnectionResetError:
                 if self.running:
-                    self.logger.debug(f"Coordinator stopped")
+                    self._message_to_show = "coordinator stopped"
+                    self.logger.debug(self._message_to_show)
                     self.controller.on_game_over(self.tic_tac_toe)
 
     def __handle_message(self, message: Any):
@@ -483,7 +489,8 @@ class TicTacToeTerminal(TicTacToeGame):
                 callback_on_create_game=self._callback_on_create_game,
                 callback_on_join_game=self._callback_on_join_game,
                 joinable_games=self.joinable_game_ids,
-                updates_queue=self.joinable_games_updates
+                updates_queue=self.joinable_games_updates,
+                message_to_show=self._message_to_show
             )
 
     def after_run(self):
@@ -507,7 +514,7 @@ class TicTacToeTerminal(TicTacToeGame):
 
     def restart(self):
         self.stop()
-        main_terminal(self.settings)
+        main_terminal(self.settings, message_to_show=self._message_to_show)
 
 
 def main_lobby(settings: Settings=None):
@@ -521,6 +528,6 @@ def main_coordinator(game_id: int, connection: Connection, settings: Settings=No
     connection.close()
     coordinator.run()
 
-def main_terminal(settings: Settings=None):
+def main_terminal(settings: Settings=None, message_to_show: str=None):
     lobby_menu = LobbyMenu(size=settings.size)
-    TicTacToeTerminal(settings, lobby_menu).run()
+    TicTacToeTerminal(settings, lobby_menu, message_to_show=message_to_show).run()

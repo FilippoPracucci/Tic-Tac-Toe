@@ -9,7 +9,6 @@ from pygame_menu.widgets.widget.button import Button
 from pygame_menu.widgets.widget.frame import Frame
 from pygame_menu.widgets.widget.label import Label
 from pygame import Vector2, draw, Surface
-from tic_tac_toe.controller import ControlEvent, InputHandler
 from tic_tac_toe.model import TicTacToe, Symbol, Mark
 
 SCREEN_BACKGROUND_COLOR = "black"
@@ -38,7 +37,7 @@ class LobbyMenu(pygame_menu.Menu):
         self._symbol_selected: Symbol = Symbol.CROSS
         self._id_selected: Optional[int] = None
         self._screen = pygame.display.set_mode(Vector2(size))
-        super().__init__("TicTacToe", size[0], size[1], theme=themes.THEME_BLUE)
+        super().__init__("TicTacToe", size[0], size[1], theme=themes.THEME_BLUE, overflow=False)
         self._join_frame: Frame = None
         self._menubar._backbox = False
         self._callback_on_create_game: callable = None
@@ -47,19 +46,22 @@ class LobbyMenu(pygame_menu.Menu):
         self._game_selector: DropSelect = None
         self._join_button: Button = None
         self._no_games_label: Label = None
+        self._message_label: Label = None
 
     def start(
         self,
         callback_on_create_game: callable,
         callback_on_join_game: callable,
         joinable_games: Dict[int, str]={},
-        updates_queue: Queue=None
+        updates_queue: Queue=None,
+        message_to_show: str=None
     ):
         self._joinable_games = joinable_games
         self._updates_queue = updates_queue
         self._callback_on_create_game = callback_on_create_game
         self._callback_on_join_game = callback_on_join_game
-        self.enable()
+        if message_to_show is not None:
+            self._message_label = self.add.label(f"Last game message: {message_to_show}", font_color="black", max_char=-1)
         self.__setup()
         self.mainloop(self._screen, bgfun=self._poll_updates if self._updates_queue else None)
 
@@ -68,6 +70,8 @@ class LobbyMenu(pygame_menu.Menu):
         self.disable()
 
     def __setup(self):
+        self.enable()
+        self.center_content()
         self._symbol_selector = self.add.dropselect(
             title="Symbol: ",
             items=list(map(lambda s: str(s.value), Symbol.values())),
