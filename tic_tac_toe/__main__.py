@@ -1,8 +1,6 @@
-import argparse
 from argparse import ArgumentParser
 from typing import Any
 import tic_tac_toe
-from tic_tac_toe.model.game_object import Symbol
 from tic_tac_toe.utils import Settings
 
 def arg_parser() -> ArgumentParser:
@@ -40,7 +38,8 @@ if args.mode == 'local':
     tic_tac_toe.main(settings)
     exit(0)
 if args.mode == 'centralised':
-    from tic_tac_toe.remote.centralised import main_lobby, main_terminal
+    from tic_tac_toe.remote.centralised import main_lobby
+    from tic_tac_toe.remote.centralised.terminal import main_terminal
     if args.role == 'coordinator':
         main_lobby(settings)
         exit(0)
