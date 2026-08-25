@@ -12,7 +12,7 @@ from tic_tac_toe.model.game_object import Symbol
 from tic_tac_toe.controller import LobbyEvent, ControlEvent
 from tic_tac_toe.remote.tcp import TcpClient, Address
 from tic_tac_toe.remote.presentation import serialize, deserialize
-from tic_tac_toe.view import LobbyMenu
+from tic_tac_toe.view.lobby_menu import LobbyMenu
 from tic_tac_toe.remote.centralised.utils import CoordinationMessageType, Config
 import threading
 
