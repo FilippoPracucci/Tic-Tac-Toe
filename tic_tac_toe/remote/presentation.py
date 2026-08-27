@@ -1,4 +1,4 @@
-from typing import Iterable
+from typing import Any, Iterable
 from pygame.event import Event
 from tic_tac_toe.model.grid import *
 from tic_tac_toe.model.game_object import *
@@ -10,10 +10,19 @@ import json
 _DEBUG = False
 
 class Serializer:
+    """Serializer from various object types to JSON format."""
+
     primitives = [int, float, str, bool]
     containers = [list, tuple]
 
     def serialize(self, obj: Any) -> str:
+        """Serialize an object into a JSON representation.
+
+        :param obj: The object to serialize.
+        :return: The JSON text representing the object.
+        :raise NotImplementedError: If the object's type is unsupported.
+        """
+
         return json.dumps(self._serialize(obj), indent=2 if _DEBUG else None)
 
     def _serialize(self, obj: Any):
@@ -89,7 +98,16 @@ class Serializer:
         return self._to_dict(tic_tac_toe, 'players', 'marks', 'grid', 'turn', 'config', 'size', 'time', 'updates')
 
 class Deserializer:
+    """Deserializer from JSON format to various object types."""
+
     def deserialize(self, input: str) -> Any:
+        """Deserialize a JSON representation into its corresponding object type.
+
+        :param input: The JSON text to deserialize.
+        :return: The reconstructed object or primitive value.
+        :raise NotImplementedError: If the JSON contains an unsupported type.
+        """
+
         return self._deserialize(json.loads(input))
 
     def _deserialize(self, obj: Any) -> Any:
@@ -162,8 +180,22 @@ DEFAULT_SERIALIZER = Serializer()
 DEFAULT_DESERIALIZER = Deserializer()
 
 def serialize(obj: Any, serializer: Serializer=DEFAULT_SERIALIZER) -> str:
+    """Serialize an object using the supplied serializer.
+
+    :param obj: The object to serialize.
+    :param serializer: The :class:`Serializer` implementation to use.
+    :return: The JSON text representation of the object.
+    """
+
     return serializer.serialize(obj)
 
 
 def deserialize(input: str, deserializer: Deserializer=DEFAULT_DESERIALIZER) -> Any:
+    """Deserialize JSON text using the supplied deserializer.
+
+    :param input: The JSON text to deserialize.
+    :param deserializer: The :class:`Deserializer` implementation to use.
+    :return: The reconstructed object or primitive value.
+    """
+
     return deserializer.deserialize(input)

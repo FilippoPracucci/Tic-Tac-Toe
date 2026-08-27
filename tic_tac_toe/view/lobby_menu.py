@@ -12,6 +12,11 @@ from pygame import Vector2
 from tic_tac_toe.model import Symbol
 
 class LobbyMenu(pygame_menu.Menu):
+    """Lobby menu used to create or join a game.
+
+    :param size: The size of the menu window in pixels as a `(width, height)` tuple.
+    """
+
     def __init__(self, size: Tuple):
         pygame.init()
         self._lock = threading.RLock()
@@ -39,6 +44,14 @@ class LobbyMenu(pygame_menu.Menu):
         updates_queue: Queue=None,
         message_to_show: str=None
     ):
+        """Open the lobby menu and setup its callbacks.
+
+        :param callback_on_create_game: The function called when creating a new game.
+        :param callback_on_join_game: The function called when joining an existing game.
+        :param joinable_games: The mapping of game ids to symbol available for joining.
+        :param updates_queue: The queue used to refresh the available games.
+        :param message_to_show: The optional message displayed in the lobby.
+        """
         self._joinable_games = joinable_games
         self._updates_queue = updates_queue
         self._callback_on_create_game = callback_on_create_game
@@ -49,6 +62,7 @@ class LobbyMenu(pygame_menu.Menu):
         self.mainloop(self._screen, bgfun=self._poll_updates if self._updates_queue else None)
 
     def stop(self):
+        """Disable the menu if it is currently enabled."""
         with self._lock:
             if not self.is_enabled():
                 return

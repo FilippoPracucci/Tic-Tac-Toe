@@ -4,6 +4,12 @@ from typing import List
 
 @dataclass
 class Cell:
+    """Represent a cell in a :class:`Grid`.
+
+    :param x: Horizontal coordinate of the cell.
+    :param y: Vertical coordinate of the cell.
+    """
+
     x: int
     y: int
 
@@ -11,6 +17,11 @@ class Cell:
         return hash((self.x, self.y))
 
 class Grid:
+    """Represent the square grid, composed by cells.
+
+    :param dim: Number of rows and columns in the grid.
+    """
+
     dim: int
     cells: List[Cell]
 

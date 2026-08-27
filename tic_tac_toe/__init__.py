@@ -6,6 +6,12 @@ from .view import ShowNothingTicTacToeView
 from typing import List
 
 class TicTacToeGame:
+    """Manage a Tic-Tac-Toe game session.
+
+    :param settings: Optional game settings.
+    :param players: List of game's players.
+    """
+
     def __init__(self, settings: Settings=None, players: List[Player]=[]):
         self.settings = settings or Settings()
         self.logger = logger("TicTacToeGame")
@@ -25,14 +31,27 @@ class TicTacToeGame:
 
     @property
     def turn(self) -> Player:
+        """Return the active player.
+
+        :return: The current player.
+        """
         return self._turn
-    
+
     @turn.setter
     def turn(self, player: Player):
+        """Set the active player.
+
+        :param player: The new active player.
+        """
         assert isinstance(player, Player), f"Invalid symbol for a player: {player.symbol}"
         self._turn = player
 
     def create_controller(game):
+        """Create the local controller bound to the current game instance.
+
+        :param game: The game instance the controller should interact with.
+        :return: A configured controller object for local gameplay.
+        """
         from .controller.local import TicTacToeLocalController
 
         class Controller(TicTacToeLocalController):
@@ -55,20 +74,29 @@ class TicTacToeGame:
         return Controller()
 
     def create_view(self, title: str="GAME"):
+        """Build the view used to render the board.
+
+        :param title: Title of the window.
+        :return: The view instance created.
+        """
         from .view import ScreenTicTacToeView
         return ScreenTicTacToeView(self.tic_tac_toe, title)
 
     def before_run(self):
+        """Operations to perform before the game loop starts."""
         pygame.init()
 
     def after_run(self):
+        """Operations to perform after the game loop stops."""
         pygame.quit()
 
     def at_each_run(self):
+        """Operations to perform on each game loop iteration."""
         if self.settings.gui:
             pygame.display.flip()
 
     def run(self):
+        """The game loop."""
         try:
             self.dt = 0
             self.before_run()
@@ -82,10 +110,15 @@ class TicTacToeGame:
             self.after_run()
 
     def stop(self):
+        """Stop the game loop."""
         self.running = False
 
 
 def main(settings: Settings=None):
+    """Create and run a Tic-Tac-Toe game, after the players creation and using the provided settings.
+
+    :param settings: Optional game settings.
+    """
     if settings is None:
         settings = Settings()
     players = [Player(symbol) for symbol in Symbol.values()]

@@ -17,6 +17,9 @@ from tic_tac_toe.remote.centralised.utils import CoordinationMessageType, Config
 import threading
 
 class TicTacToeTerminal(TicTacToeGame):
+    """Terminal game client connecting to a lobby coordinator to create or join a game.
+    Then connects to the game coordinator to play the game with another player.
+    """
 
     def __init__(self, settings: Settings=None, lobby_menu: LobbyMenu=None, message_to_show: str=None):
         settings = settings or Settings()
@@ -37,6 +40,11 @@ class TicTacToeTerminal(TicTacToeGame):
         self.controller.post_event(LobbyEvent.REQUEST_JOINABLE_GAME_IDS)
 
     def wait_for_game_ids(self, timeout: float=None) -> Dict[int, str]:
+        """Wait for updated list of joinable game IDs from the lobby.
+
+        :param timeout: The maximum time to wait in seconds.
+        :return: The mapping of game IDs to required opponent symbol string.
+        """
         try:
             ids = self.joinable_games_updates.get(timeout=timeout)
             self.joinable_game_ids = ids
@@ -114,7 +122,6 @@ class TicTacToeTerminal(TicTacToeGame):
                     if terminal._message_to_show is None:
                         terminal._message_to_show = default_message_to_show
                     print(f"Game ended: {terminal._message_to_show}")
-                    print(f"Lobby menu: {terminal._lobby_menu}")
                     if terminal._lobby_menu is not None:
                         terminal._lobby_menu.stop()
                         terminal.stop()
@@ -163,10 +170,19 @@ class TicTacToeTerminal(TicTacToeGame):
             self.controller.post_event(ControlEvent.PLAYER_JOIN, symbol=self.symbol)
 
     def _callback_on_create_game(self, selected_symbol: Symbol):
+        """Game creation callback from lobby menu.
+
+        :param selected_symbol: The :class:`Symbol` selected by the player creating the game.
+        """
         self.controller.post_event(ControlEvent.PLAYER_CREATE_GAME, symbol=selected_symbol)
         self._lobby_menu = None
 
     def _callback_on_join_game(self, selected_symbol: Symbol, selected_game_id: int):
+        """Game join callback from lobby menu.
+
+        :param selected_symbol: The :class:`Symbol` selected by the player joining the game.
+        :param selected_game_id: The game to join identifier.
+        """
         self.controller.post_event(ControlEvent.PLAYER_JOIN_GAME, symbol=selected_symbol, game_id=selected_game_id)
         self._lobby_menu = None
 
@@ -197,14 +213,27 @@ class TicTacToeTerminal(TicTacToeGame):
                 self.logger.debug("Error while sending the message")
 
     def message(self, text: str, sender: str, timestamp: datetime=None):
+        """Format a chat message with timestamp and sender information.
+
+        :param text: The message content.
+        :param sender: The name of the message sender.
+        :param timestamp: The timestamp of the message (uses current time if None).
+        :return: The formatted message string.
+        """
         if timestamp is None:
             timestamp = datetime.now()
         return f"[{timestamp.isoformat(timespec="minutes")}] {sender}: {text.strip()}"
 
     def restart(self):
+        """Stop the current game and restart a new session."""
         self.stop()
         main_terminal(self.settings, message_to_show=self._message_to_show)
 
 def main_terminal(settings: Settings=None, message_to_show: str=None):
+    """Initialize and run the terminal game client.
+
+    :param settings: The optional :class:`Settings`.
+    :param message_to_show: The optional message to display in the lobby menu.
+    """
     lobby_menu = LobbyMenu(size=settings.size)
     TicTacToeTerminal(settings, lobby_menu, message_to_show=message_to_show).run()

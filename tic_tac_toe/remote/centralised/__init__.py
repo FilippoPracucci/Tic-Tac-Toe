@@ -13,11 +13,15 @@ from tic_tac_toe.remote.centralised.coordinator import main_coordinator
 import threading, json, os
 
 class LobbyCoordinator():
+    """ Coordinates the lobby and manages multiple games.
+
+    :param settings: The optional :class:`Settings`.
+    """
 
     def __init__(self, settings: Settings=None):
         self.logger = logger("LobbyCoordinator")
         self.settings = settings
-        self.controller = self.create_controller()
+        self.controller = self._create_controller()
         self.server = TcpServer(self.settings.port or Config.DEFAULT_PORT.value, self._on_new_connection)
         self.clock = pygame.time.Clock()
         self.running = True
@@ -28,12 +32,52 @@ class LobbyCoordinator():
         self.__game_ids_subscribers: Dict[Address, TcpConnection] = {}
         open(Config.GAME_IDS_FILE.value, "x")
 
-    def create_controller(lobby_coordinator: 'LobbyCoordinator'):
+    @property
+    def coordinators(self) -> Dict[int, Address]:
+        """Get the active game coordinators.
+
+        :return: The mapping of game IDs to coordinator :class:`Address`.
+        """
+        with self._lock:
+            return self.__coordinators
+
+    @coordinators.setter
+    def coordinators(self, coordinators: Dict[int, Address]):
+        """Replace the active game coordinators with a new dictionary.
+
+        :param coordinators: The new mapping of game IDs to coordinator :class:`Address`.
+        """
+        with self._lock:
+            self.__coordinators = coordinators
+
+    def before_run(self):
+        """Initialize pygame before starting the lobby coordinator."""
+        pygame.init()
+
+    def after_run(self):
+        """Clean up pygame and remove joinable game IDs store file after coordinator stops."""
+        pygame.quit()
+        os.remove(Config.GAME_IDS_FILE.value)
+
+    def run(self):
+        """Start the lobby coordinator event loop."""
+        try:
+            self.before_run()
+            while self.running:
+                self.controller.handle_events()
+        finally:
+            self.after_run()
+
+    def stop(self):
+        """Stop the lobby coordinator event loop."""
+        self.running = False
+
+    def _create_controller(lobby_coordinator: 'LobbyCoordinator'):
         from tic_tac_toe.controller import LobbyEventHandler
 
         class Controller(LobbyEventHandler):
             def on_create_game(self, **kwargs):
-                game_id = max(lobby_coordinator.game_ids(), default=0) + 1
+                game_id = max(lobby_coordinator._game_ids(), default=0) + 1
                 lobby_connection, coordinator_connection = Pipe()
                 lobby_coordinator._processes_pool.apply_async(
                     func=main_coordinator,
@@ -41,24 +85,24 @@ class LobbyCoordinator():
                     callback=lambda _: self.on_delete_game(game_id)
                 )
                 coordinator_address = lobby_connection.recv()
-                lobby_coordinator.add_coordinator(game_id, coordinator_address)
+                lobby_coordinator._add_coordinator(game_id, coordinator_address)
                 if "symbol" in kwargs:
-                    lobby_coordinator.add_joinable_game(game_id, str(self.__opposite_symbol(kwargs["symbol"]).value))
+                    lobby_coordinator._add_joinable_game(game_id, str(self.__opposite_symbol(kwargs["symbol"]).value))
                 self.__update_and_broadcast_game_ids()
                 if CoordinationMessageType.CONNECTION.value in kwargs:
                     connection: TcpConnection = kwargs[CoordinationMessageType.CONNECTION.value]
                     connection.send(serialize({CoordinationMessageType.COORDINATOR.value: (connection.local_address.ip, coordinator_address.port)}))
 
             def on_delete_game(self, game_id: int):
-                lobby_coordinator.remove_coordinator_by_id(game_id)
-                lobby_coordinator.remove_joinable_game(game_id)
+                lobby_coordinator._remove_coordinator_by_id(game_id)
+                lobby_coordinator._remove_joinable_game(game_id)
                 self.__update_and_broadcast_game_ids()
 
             def on_join_game(self, game_id: int, **kwargs):
                 connection: TcpConnection = kwargs[CoordinationMessageType.CONNECTION.value] if CoordinationMessageType.CONNECTION.value in kwargs else None
-                lobby_coordinator.remove_joinable_game(game_id)
+                lobby_coordinator._remove_joinable_game(game_id)
                 self.__update_and_broadcast_game_ids()
-                if game_id in lobby_coordinator.game_ids():
+                if game_id in lobby_coordinator._game_ids():
                     if connection is not None:
                         connection.send(serialize({CoordinationMessageType.COORDINATOR.value: (connection.local_address.ip, lobby_coordinator.coordinators[game_id].port)}))
                 else:
@@ -72,19 +116,19 @@ class LobbyCoordinator():
                 connection: TcpConnection = kwargs[CoordinationMessageType.CONNECTION.value] if CoordinationMessageType.CONNECTION.value in kwargs else None
                 if connection is not None:
                     self.__init_game_ids()
-                    connection.send(serialize({CoordinationMessageType.GAME_IDS.value: lobby_coordinator.joinable_games()}))
-                    lobby_coordinator.add_game_ids_subscriber(connection)
+                    connection.send(serialize({CoordinationMessageType.GAME_IDS.value: lobby_coordinator._joinable_games()}))
+                    lobby_coordinator._add_game_ids_subscriber(connection)
 
             def __broadcast_game_ids(self):
-                for connection in lobby_coordinator.game_ids_subscribers():
+                for connection in lobby_coordinator._game_ids_subscribers():
                     try:
-                        connection.send(serialize({CoordinationMessageType.GAME_IDS.value: lobby_coordinator.joinable_games()}))
+                        connection.send(serialize({CoordinationMessageType.GAME_IDS.value: lobby_coordinator._joinable_games()}))
                     except Exception as e:
                         lobby_coordinator.logger.debug(f"Error while broadcasting game IDs to {connection.remote_address}")
 
             def __update_games_id_db(self):
                 with open(Config.GAME_IDS_FILE.value, "w") as file:
-                    json.dump(lobby_coordinator.joinable_games(), file)
+                    json.dump(lobby_coordinator._joinable_games(), file)
 
             def __update_and_broadcast_game_ids(self):
                 self.__update_games_id_db()
@@ -102,68 +146,40 @@ class LobbyCoordinator():
 
         return Controller()
 
-    @property
-    def coordinators(self) -> Dict[int, Address]:
-        with self._lock:
-            return self.__coordinators
-
-    @coordinators.setter
-    def coordinators(self, coordinators: Dict[int, Address]):
-        with self._lock:
-            self.__coordinators = coordinators
-
-    def game_ids(self) -> List[int]:
+    def _game_ids(self) -> List[int]:
         return list(self.coordinators.keys())
 
-    def joinable_games(self) -> Dict[int, str]:
+    def _joinable_games(self) -> Dict[int, str]:
         return self.__joinable_games
 
-    def add_joinable_game(self, game_id: int, symbol: str):
+    def _add_joinable_game(self, game_id: int, symbol: str):
         with self._lock:
             self.__joinable_games[game_id] = symbol
 
-    def remove_joinable_game(self, game_id: int):
+    def _remove_joinable_game(self, game_id: int):
         with self._lock:
             self.__joinable_games.pop(game_id)
 
-    def add_coordinator(self, game_id: int, address: Address):
+    def _add_coordinator(self, game_id: int, address: Address):
         with self._lock:
             self.__coordinators.update({game_id: address})
 
-    def remove_coordinator_by_id(self, game_id: int):
+    def _remove_coordinator_by_id(self, game_id: int):
         with self._lock:
             self.__coordinators.pop(game_id)
 
-    def add_game_ids_subscriber(self, connection: TcpConnection):
+    def _add_game_ids_subscriber(self, connection: TcpConnection):
         with self._lock:
             self.__game_ids_subscribers[connection.remote_address] = connection
 
-    def remove_game_ids_subscriber_by_address(self, address: Address):
+    def _remove_game_ids_subscriber_by_address(self, address: Address):
         with self._lock:
             if address in self.__game_ids_subscribers:
                 self.__game_ids_subscribers.pop(address)
 
-    def game_ids_subscribers(self) -> List[TcpConnection]:
+    def _game_ids_subscribers(self) -> List[TcpConnection]:
         with self._lock:
             return list(self.__game_ids_subscribers.values())
-
-    def before_run(self):
-        pygame.init()
-
-    def after_run(self):
-        pygame.quit()
-        os.remove(Config.GAME_IDS_FILE.value)
-
-    def run(self):
-        try:
-            self.before_run()
-            while self.running:
-                self.controller.handle_events()
-        finally:
-            self.after_run()
-
-    def stop(self):
-        self.running = False
 
     def _on_new_connection(self, event: ServerEvent, connection: TcpConnection, address: Address, error: Exception):
         match event:
@@ -184,10 +200,10 @@ class LobbyCoordinator():
                     self.__handle_message(deserialize(payload), connection=connection)
             case ConnectionEvent.CLOSE:
                 self.logger.debug(f"Connection with coordinator {connection.remote_address} closed")
-                self.remove_game_ids_subscriber_by_address(connection.remote_address)
+                self._remove_game_ids_subscriber_by_address(connection.remote_address)
             case ConnectionEvent.ERROR:
                 self.logger.debug(error)
-                self.remove_game_ids_subscriber_by_address(connection.remote_address)
+                self._remove_game_ids_subscriber_by_address(connection.remote_address)
 
     def __handle_message(self, message: Any, **kwargs):
         self.logger.debug(f"Message: {message}, kwargs: {kwargs}")
@@ -199,5 +215,10 @@ class LobbyCoordinator():
         pygame.event.post(message)
 
 def main_lobby(settings: Settings=None):
+    """Initialize and run the lobby coordinator server.
+
+    :param settings: The optional :class:`Settings`.
+    """
+
     os.environ["SDL_VIDEODRIVER"] = "dummy"
     LobbyCoordinator(settings).run()

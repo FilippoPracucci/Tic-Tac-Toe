@@ -9,17 +9,32 @@ LINE_WIDTH = 2
 CIRCLE_RADIUS = 60
 
 class TicTacToeView:
+    """Base class for a tic-tac-toe game view.
+
+    :param tic_tac_toe: The :class:`TicTacToe` instance to display.
+    """
+
     def __init__(self, tic_tac_toe: TicTacToe):
         self._tic_tac_toe = tic_tac_toe
 
     def render(self):
+        """Render the current game state."""
         raise NotImplemented
 
 class ShowNothingTicTacToeView(TicTacToeView):
+    """:class:`TicTacToeView` that does not render anything."""
+
     def render(self):
         pass
 
 class ScreenTicTacToeView(TicTacToeView):
+    """Render the game on a pygame window.
+
+    :param tic_tac_toe: The :class:`TicTacToe` instance to display.
+    :param title: The title shown in the window caption.
+    :param screen: The optional pygame surface to draw on.
+    """
+
     def __init__(self, tic_tac_toe: TicTacToe, title: str, screen: Surface=None):
         super().__init__(tic_tac_toe)
         self._title = title
@@ -28,10 +43,18 @@ class ScreenTicTacToeView(TicTacToeView):
 
     @property
     def title(self) -> str:
+        """Return the window title string.
+
+        :return: The window title.
+        """
         return self._title
 
     @title.setter
     def title(self, value: str):
+        """Set the window title.
+
+        :param value: The new title of the window.
+        """
         self._title = value
         pygame.display.set_caption(self._title)
 
@@ -49,6 +72,7 @@ class ScreenTicTacToeView(TicTacToeView):
             self.render_mark(mark)
 
     def render_grid(self):
+        """Render the grid on the screen."""
         for d in range(1, self._tic_tac_toe.grid.dim):
             x = d * self._tic_tac_toe.config.cell_width_size
             y = d * self._tic_tac_toe.config.cell_height_size
@@ -56,8 +80,12 @@ class ScreenTicTacToeView(TicTacToeView):
             self.draw_line(GAME_OBJECT_COLOR, (0, y), (self._screen.get_width(), y), width=GRID_LINE_WIDTH)
 
     def render_mark(self, mark: Mark):
+        """Render a single mark on the board.
+
+        :param mark: The :class:`Mark` to draw.
+        """
         assert mark.symbol in Symbol.values(), f"Error! Passed a mark with a not valid ({mark.symbol})."
-        self._render_nought(mark) if mark.is_nought else self._render_cross(mark)
+        self._render_nought(mark) if mark.symbol.is_nought else self._render_cross(mark)
 
     def _render_nought(self, mark: Mark):
         self.draw_circle(GAME_OBJECT_COLOR, (mark.position), radius=CIRCLE_RADIUS, width=LINE_WIDTH)

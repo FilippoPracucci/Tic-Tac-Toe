@@ -14,6 +14,11 @@ from tic_tac_toe.remote.presentation import serialize, deserialize
 import threading, os
 
 class TicTacToeCoordinator(TicTacToeGame):
+    """Coordinator game server between two remote players.
+
+    :param game_id: The game identifier.
+    :param settings: The optional :class:`Settings`.
+    """
 
     def __init__(self, game_id: int, settings: Settings=None):
         settings = settings or Settings()
@@ -80,19 +85,35 @@ class TicTacToeCoordinator(TicTacToeGame):
 
     @property
     def peers(self) -> Set[Address]:
+        """Get all the connected peer addresses.
+
+        :return: The set of peer network :class:`Address`.
+        """
         with self._lock:
             return set(self._peers)
 
     @peers.setter
     def peers(self, value: Iterable[Address]):
+        """Replace the collection of connected peers with a new one.
+
+        :param value: The new collection of peer :class:`Address`.
+        """
         with self._lock:
             self._peers = set(value)
 
     def add_peer(self, peer: Address):
+        """Add a new peer address.
+
+        :param peer: The network :class:`Address` of the peer to add.
+        """
         with self._lock:
             self._peers.add(peer)
 
     def remove_peer(self, peer: Address):
+        """Remove a peer address.
+
+        :param peer: The network :class:`Address` of the peer to remove.
+        """
         with self._lock:
             if self._peers.__contains__(peer):
                 self._peers.remove(peer)
@@ -142,6 +163,12 @@ class TicTacToeCoordinator(TicTacToeGame):
             self.logger.debug(f"Received message: {message}")
 
 def main_coordinator(game_id: int, connection: Connection, settings: Settings=None):
+    """Initialize and run the coordinator game server.
+
+    :param game_id: The game identifier.
+    :param connection: The pipe :class:`Connection` between the lobby and the game coordinator.
+    :param settings: The optional :class:`Settings`.
+    """
     os.environ["SDL_VIDEODRIVER"] = "dummy"
     coordinator = TicTacToeCoordinator(game_id, settings)
     connection.send(coordinator.server.address)

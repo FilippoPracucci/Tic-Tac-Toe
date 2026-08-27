@@ -5,6 +5,12 @@ import socket
 import threading
 
 class TcpConnection(Connection):
+    """Implementation of a TCP connection.
+
+    :param socket: The underlying TCP socket.
+    :param callback: The optional function to invoke for connection events.
+    """
+
     def __init__(self, socket: socket.socket, callback=None):
         self.logger = logger("TcpConnection")
         self.__socket = socket
@@ -20,16 +26,35 @@ class TcpConnection(Connection):
     def local_address(self) -> Address:
         return self.__local_address
 
+    @local_address.setter
+    def local_address(self, address: Address):
+        self.__local_address = address
+
     @property
     def remote_address(self) -> Address:
         return self.__remote_address
 
+    @remote_address.setter
+    def remote_address(self, address: Address):
+        self.__remote_address = address
+
     @property
     def callback(self):
+        """Return the callback to invoke for connection events.
+        
+        :return: The callback configured for connection events, or a no-op function if none is configured.
+        """
+
         return self.__callback or (lambda *_: None)
     
     @callback.setter
     def callback(self, value):
+        """Set the event callback and start the thread to receive messages.
+
+        :param value: The callable to invoke for connection events.
+        :raise ValueError: If a callback has already been configured.
+        """
+
         if self.__callback:
             raise ValueError("Callback can only be set once")
         self.__callback = value
@@ -38,6 +63,11 @@ class TcpConnection(Connection):
 
     @property
     def closed(self):
+        """Return whether the underlying socket has been closed.
+
+        :return: ``True`` if the socket is closed, ``False`` otherwise.
+        """
+
         return self.__socket._closed
     
     def send(self, message: Any):
@@ -61,6 +91,19 @@ class TcpConnection(Connection):
             self.on_event(ConnectionEvent.CLOSE)
             self.__notify_closed = True
 
+    def on_event(self, event: ConnectionEvent, payload: str=None, connection: Connection=None, error: Exception=None):
+        """Trigger the configured callback for a connection event.
+
+        :param event: The :class:`ConnectionEvent`.
+        :param payload: The optional message payload.
+        :param connection: The optional connection.
+        :param error: The optional exception.
+        """
+
+        if connection is None:
+            connection = self
+        self.callback(event, payload, connection, error)
+
     def __handle_incoming_messages(self):
         try:
             while not self.closed:
@@ -75,12 +118,13 @@ class TcpConnection(Connection):
         finally:
             self.close()
 
-    def on_event(self, event: ConnectionEvent, payload: str=None, connection: Connection=None, error: Exception=None):
-        if connection is None:
-            connection = self
-        self.callback(event, payload, connection, error)
-
 class TcpServer(Server):
+    """Server for accepting and managing TCP connections on a local port.
+
+    :param port: The local port to bind the server to.
+    :param callback: The optional function to invoke for server events.
+    """
+
     def __init__(self, port: int, callback=None):
         self.logger = logger("TcpServer")
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -95,24 +139,59 @@ class TcpServer(Server):
 
     @property
     def address(self) -> Address:
+        """Return the server's address.
+
+        :return: The :class:`Address` of the server.
+        """
+
         return Address(*self.__socket.getsockname())
     
     @property
     def connections(self) -> Dict:
+        """Return the connections accepted by the server.
+        
+        :return: The mapping of remote addresses to the related :class:`TcpConnection`.
+        """
+
         return self._connections
 
     @property
     def callback(self):
+        """Return the callback to invoke for server events.
+
+        :return: The callback configured for server events, or a no-op function if none is configured.
+        """
+
         return self.__callback or (lambda *_: None)
     
     @callback.setter
     def callback(self, value):
+        """Set the event callback and start the thread to listen for new connections.
+        
+        :param value: The callable to invoke for server events.
+        :raise ValueError: If a callback has already been configured.
+        """
+
         if self.__callback:
             raise ValueError("Callback can only be set once")
         self.__callback = value
         if value:
             self.__listener_thread.start()
-    
+
+    def on_event(self, event: str, connection: Connection=None, address: Address=None, error: Exception=None):
+        """Trigger the configured callback for a server event.
+
+        :param event: The event.
+        :param connection: The optional :class:`Connection`.
+        :param address: The optional :class:`Address`.
+        :param error: The optional :class:`Exception`.
+        """
+
+        self.__callback(event, connection, address, error)
+
+    def close(self):
+        self.__socket.close()
+
     def __handle_incoming_connections(self):
         self.__socket.listen()
         self.on_event(ServerEvent.LISTEN, address=self._address)
@@ -129,13 +208,13 @@ class TcpServer(Server):
         finally:
             self.on_event(ServerEvent.STOP)
 
-    def on_event(self, event: str, connection: Connection=None, address: Address=None, error: Exception=None):
-        self.__callback(event, connection, address, error)
-
-    def close(self):
-        self.__socket.close()
-
 class TcpClient(TcpConnection):
+    """Client for connecting to a TCP server.
+
+    :param server_address: The :class:`Address` of the server to connect to.
+    :param callback: The optional function to invoke for connection events.
+    """
+
     def __init__(self, server_address: Address, callback=None):
         self.logger = logger("TcpClient")
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
