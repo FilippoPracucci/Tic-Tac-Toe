@@ -13,7 +13,6 @@ class Sized:
 
         :return: Object width.
         """
-
         return self.size.x # type: ignore[attr-defined]
 
     @property
@@ -22,7 +21,6 @@ class Sized:
 
         :return: Object height.
         """
-
         return self.size.y # type: ignore[attr-defined]
 
 class Positioned:
@@ -34,7 +32,6 @@ class Positioned:
 
         :return: Object x-coordinate.
         """
-
         return self.position.x # type: ignore[attr-defined]
 
     @property
@@ -43,7 +40,6 @@ class Positioned:
 
         :return: Object y-coordinate.
         """
-
         return self.position.y # type: ignore[attr-defined]
 
 class GameObject(Sized, Positioned):
@@ -54,25 +50,25 @@ class GameObject(Sized, Positioned):
     :param name: The optional object name.
     """
 
-    def __init__(self, size: Vector2, position: Vector2=None, name: str=None):
+    def __init__(self, size: Vector2, position: Vector2 = None, name: str = None):
         self._size = Vector2(size)
         self._position = Vector2(position) if position is not None else Vector2()
         self.name = name or self.__class__.__name__.lower()
         self.logger = logger("GameObject")
 
-    def __eq__(self, other: 'GameObject'):
+    def __eq__(self, other: 'GameObject') -> bool:
         return isinstance(other, type(self)) and \
             self.name == other.name and \
             self.size == other.size and \
             self.position == other.position
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((type(self), self.name, self.size, self.position))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<{type(self).__name__}(id={id(self)}, name={self.name}, size={self.size}, position={self.position})>'
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'{self.name}#{id(self)}'
     
     @property
@@ -81,16 +77,14 @@ class GameObject(Sized, Positioned):
 
         :return: The size as a vector.
         """
-
         return self._size
     
     @size.setter
-    def size(self, value: Vector2):
+    def size(self, value: Vector2) -> None:
         """Set the object size.
 
         :param value: The new size as a vector.
         """
-
         old_value = self._size
         self._size = Vector2(value)
         if old_value is not None and old_value != self._size:
@@ -102,27 +96,25 @@ class GameObject(Sized, Positioned):
 
         :return: The position as a vector.
         """
-
         return self._position
     
     @position.setter
-    def position(self, value: Vector2):
+    def position(self, value: Vector2) -> None:
         """Set the object position.
 
         :param value: The new position as a vector.
         """
-
         old_value = self._position
         self._position = Vector2(value)
         if old_value is not None and old_value != self._position:
             self.logger.debug(f"{self} moves: {old_value} -> {self._position}")
 
-    def override(self, other: 'GameObject'):
+    def override(self, other: 'GameObject') -> None:
         """Override the current object with another valid :class:`GameObject`.
 
         :param other: The object from which to override.
+        :raises AssertionError: If the other object is not of the same type or has a different name.
         """
-
         assert isinstance(other, type(self)) and other.name == self.name, f"Invalid override: {other} -> {self}"
         self.size = other.size
         self.position = other.position
@@ -133,7 +125,7 @@ class Symbol(Enum):
     NOUGHT = "O"
     CROSS = "X"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<{type(self).__name__}.{self.name}>"
 
     @property
@@ -142,7 +134,6 @@ class Symbol(Enum):
 
         :return: `True` if the symbol is a nought, `False` otherwise.
         """
-
         return self.value == "O"
 
     @property
@@ -151,7 +142,6 @@ class Symbol(Enum):
 
         :return: `True` if the symbol is a cross, `False` otherwise.
         """
-
         return self.value == "X"
 
     @classmethod
@@ -160,7 +150,6 @@ class Symbol(Enum):
 
         :return: The list of all symbols.
         """
-
         return list(cls.__members__.values())
 
 @dataclass
@@ -172,13 +161,13 @@ class Player:
 
     symbol: Symbol
 
-    def __eq__(self, other: 'Player'):
+    def __eq__(self, other: 'Player') -> bool:
         return isinstance(other, type(self)) and self.symbol == other.symbol
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.symbol))
     
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<{type(self).__name__}(id={id(self)}, symbol={self.symbol})>'
 
 class Mark(GameObject):
@@ -190,23 +179,24 @@ class Mark(GameObject):
     :param position: The position of the mark.
     :param name: The optional mark name.
     """
+
     from .grid import Cell
 
-    def __init__(self, cell: Cell, symbol: Symbol, size: Vector2=Vector2(0), position: Vector2=None, name: str=None):
+    def __init__(self, cell: Cell, symbol: Symbol, size: Vector2 = Vector2(0), position: Vector2 = None, name: str = None):
         super().__init__(size, position, name or "mark_" + symbol.name.lower())
         self.cell = cell
         self.symbol = symbol
 
-    def __eq__(self, other: 'Mark'):
+    def __eq__(self, other: 'Mark') -> bool:
         return super().__eq__(other) and self.cell == other.cell and self.symbol == other.symbol
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((super().__hash__(), self.cell, self.symbol))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return super().__repr__().replace(')>', f", cell={self.cell}, symbol={self.symbol})>")
 
-    def override(self, other: GameObject):
+    def override(self, other: GameObject) -> None:
         super().override(other)
         self.cell = other.cell # type: ignore[attr-defined]
         self.symbol = other.symbol # type: ignore[attr-defined]

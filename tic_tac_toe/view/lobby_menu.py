@@ -1,6 +1,7 @@
 from queue import Queue, Empty
 import threading
 from typing import Dict, Optional, Tuple
+from collections.abc import Callable
 import pygame
 import pygame_menu
 from pygame_menu import themes
@@ -28,8 +29,8 @@ class LobbyMenu(pygame_menu.Menu):
         super().__init__("TicTacToe", size[0], size[1], theme=themes.THEME_BLUE, overflow=False)
         self._join_frame: Frame = None
         self._menubar._backbox = False
-        self._callback_on_create_game: callable = None
-        self._callback_on_join_game: callable = None
+        self._callback_on_create_game: Callable = None
+        self._callback_on_join_game: Callable = None
         self._symbol_selector: DropSelect = None
         self._game_selector: DropSelect = None
         self._join_button: Button = None
@@ -38,11 +39,11 @@ class LobbyMenu(pygame_menu.Menu):
 
     def start(
         self,
-        callback_on_create_game: callable,
-        callback_on_join_game: callable,
-        joinable_games: Dict[int, str]={},
-        updates_queue: Queue=None,
-        message_to_show: str=None
+        callback_on_create_game: Callable,
+        callback_on_join_game: Callable,
+        joinable_games: Dict[int, str] = {},
+        updates_queue: Queue = None,
+        message_to_show: str = None
     ):
         """Open the lobby menu and setup its callbacks.
 

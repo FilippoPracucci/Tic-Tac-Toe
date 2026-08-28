@@ -22,10 +22,9 @@ class Serializer:
         :return: The JSON text representing the object.
         :raise NotImplementedError: If the object's type is unsupported.
         """
-
         return json.dumps(self._serialize(obj), indent=2 if _DEBUG else None)
 
-    def _serialize(self, obj: Any):
+    def _serialize(self, obj: Any) -> (Any | Dict | Iterable):
         if any(isinstance(obj, primitive) for primitive in self.primitives):
             return self._serialize_primitive(obj)
         elif isinstance(obj, dict):
@@ -41,7 +40,7 @@ class Serializer:
     def _serialize_dict(self, obj: Dict) -> Dict:
         return {key: self._serialize(value) for key, value in obj.items()}
 
-    def _serialize_primitive(self, obj):
+    def _serialize_primitive(self, obj: Any) -> Any:
         return obj
 
     def _serialize_any(self, obj: Any) -> Any:
@@ -107,7 +106,6 @@ class Deserializer:
         :return: The reconstructed object or primitive value.
         :raise NotImplementedError: If the JSON contains an unsupported type.
         """
-
         return self._deserialize(json.loads(input))
 
     def _deserialize(self, obj: Any) -> Any:
@@ -186,7 +184,6 @@ def serialize(obj: Any, serializer: Serializer=DEFAULT_SERIALIZER) -> str:
     :param serializer: The :class:`Serializer` implementation to use.
     :return: The JSON text representation of the object.
     """
-
     return serializer.serialize(obj)
 
 
@@ -197,5 +194,4 @@ def deserialize(input: str, deserializer: Deserializer=DEFAULT_DESERIALIZER) -> 
     :param deserializer: The :class:`Deserializer` implementation to use.
     :return: The reconstructed object or primitive value.
     """
-
     return deserializer.deserialize(input)

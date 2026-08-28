@@ -10,12 +10,12 @@ class TicTacToeInputHandler(InputHandler):
         self._tic_tac_toe = tic_tac_toe
         self._command = ActionMap(PlayerAction.PLACE_MARK)
 
-    def mouse_clicked(self):
+    def mouse_clicked(self) -> None:
         """Emit a :ref:`ControlEvent.MARK_PLACED` event with the clicked cell and symbol of the active player."""
         pos = self._command.click().__getattribute__("click_point")
         self.post_event(ControlEvent.MARK_PLACED, cell=self._to_cell(pos), symbol=self._tic_tac_toe.turn)
 
-    def handle_inputs(self, dt: float=None, symbol: Symbol=None):
+    def handle_inputs(self, dt: float = None, symbol: Symbol = None) -> None:
         """Consume pending input events and update the game timer if a delta is provided.
 
         :param dt: The time elapsed since the previous frame.
@@ -40,22 +40,22 @@ class TicTacToeInputHandler(InputHandler):
 class TicTacToeEventHandler(EventHandler):
     """Handle the events triggered during a Tic-Tac-Toe game."""
 
-    def on_player_join(self, tic_tac_toe: TicTacToe, symbol: Symbol, **kwargs):
+    def on_player_join(self, tic_tac_toe: TicTacToe, symbol: Symbol, **kwargs) -> None:
         tic_tac_toe.add_player(Player(symbol))
 
-    def on_player_leave(self, tic_tac_toe: TicTacToe, symbol: Symbol):
+    def on_player_leave(self, tic_tac_toe: TicTacToe, symbol: Symbol) -> None:
         tic_tac_toe.remove_player_by_symbol(symbol)
 
-    def on_game_start(self, tic_tac_toe: TicTacToe):
+    def on_game_start(self, tic_tac_toe: TicTacToe) -> None:
         pass
 
-    def on_game_over(self, tic_tac_toe: TicTacToe, **kwargs):
+    def on_game_over(self, tic_tac_toe: TicTacToe, **kwargs) -> None:
         if "symbol" in kwargs:
             print(f"Player '{kwargs['symbol'].value}' has won!")
         else:
             print("Game ended because a player left")
 
-    def on_mark_placed(self, tic_tac_toe: TicTacToe, cell: Cell, symbol: Symbol):
+    def on_mark_placed(self, tic_tac_toe: TicTacToe, cell: Cell, symbol: Symbol) -> None:
         if tic_tac_toe.turn == symbol:
             tic_tac_toe.place_mark(Mark(
                 cell=cell,
@@ -69,11 +69,11 @@ class TicTacToeEventHandler(EventHandler):
             else:
                 post_event(ControlEvent.CHANGE_TURN)
 
-    def on_change_turn(self, tic_tac_toe: TicTacToe):
+    def on_change_turn(self, tic_tac_toe: TicTacToe) -> None:
         tic_tac_toe.change_turn()
         tic_tac_toe.remove_random_mark()
 
-    def on_time_elapsed(self, tic_tac_toe: TicTacToe, dt: float):
+    def on_time_elapsed(self, tic_tac_toe: TicTacToe, dt: float) -> None:
         tic_tac_toe.update(dt)
 
 class TicTacToeLocalController(TicTacToeInputHandler, TicTacToeEventHandler):

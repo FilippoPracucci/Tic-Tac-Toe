@@ -18,7 +18,7 @@ class LobbyCoordinator():
     :param settings: The optional :class:`Settings`.
     """
 
-    def __init__(self, settings: Settings=None):
+    def __init__(self, settings: Settings = None):
         self.logger = logger("LobbyCoordinator")
         self.settings = settings
         self.controller = self._create_controller()
@@ -42,7 +42,7 @@ class LobbyCoordinator():
             return self.__coordinators
 
     @coordinators.setter
-    def coordinators(self, coordinators: Dict[int, Address]):
+    def coordinators(self, coordinators: Dict[int, Address]) -> None:
         """Replace the active game coordinators with a new dictionary.
 
         :param coordinators: The new mapping of game IDs to coordinator :class:`Address`.
@@ -50,16 +50,16 @@ class LobbyCoordinator():
         with self._lock:
             self.__coordinators = coordinators
 
-    def before_run(self):
+    def before_run(self) -> None:
         """Initialize pygame before starting the lobby coordinator."""
         pygame.init()
 
-    def after_run(self):
+    def after_run(self) -> None:
         """Clean up pygame and remove joinable game IDs store file after coordinator stops."""
         pygame.quit()
         os.remove(Config.GAME_IDS_FILE.value)
 
-    def run(self):
+    def run(self) -> None:
         """Start the lobby coordinator event loop."""
         try:
             self.before_run()
@@ -68,7 +68,7 @@ class LobbyCoordinator():
         finally:
             self.after_run()
 
-    def stop(self):
+    def stop(self) -> None:
         """Stop the lobby coordinator event loop."""
         self.running = False
 
@@ -76,7 +76,7 @@ class LobbyCoordinator():
         from tic_tac_toe.controller import LobbyEventHandler
 
         class Controller(LobbyEventHandler):
-            def on_create_game(self, **kwargs):
+            def on_create_game(self, **kwargs) -> None:
                 game_id = max(lobby_coordinator._game_ids(), default=0) + 1
                 lobby_connection, coordinator_connection = Pipe()
                 lobby_coordinator._processes_pool.apply_async(
@@ -93,12 +93,12 @@ class LobbyCoordinator():
                     connection: TcpConnection = kwargs[CoordinationMessageType.CONNECTION.value]
                     connection.send(serialize({CoordinationMessageType.COORDINATOR.value: (connection.local_address.ip, coordinator_address.port)}))
 
-            def on_delete_game(self, game_id: int):
+            def on_delete_game(self, game_id: int) -> None:
                 lobby_coordinator._remove_coordinator_by_id(game_id)
                 lobby_coordinator._remove_joinable_game(game_id)
                 self.__update_and_broadcast_game_ids()
 
-            def on_join_game(self, game_id: int, **kwargs):
+            def on_join_game(self, game_id: int, **kwargs) -> None:
                 connection: TcpConnection = kwargs[CoordinationMessageType.CONNECTION.value] if CoordinationMessageType.CONNECTION.value in kwargs else None
                 lobby_coordinator._remove_joinable_game(game_id)
                 self.__update_and_broadcast_game_ids()
@@ -111,7 +111,7 @@ class LobbyCoordinator():
                     if connection is not None:
                         connection.send(serialize({CoordinationMessageType.ERROR.value: error}))
 
-            def on_request_joinable_game_ids(self, **kwargs):
+            def on_request_joinable_game_ids(self, **kwargs) -> None:
                 lobby_coordinator.logger.debug(f"Request joinable game ids: {kwargs}")
                 connection: TcpConnection = kwargs[CoordinationMessageType.CONNECTION.value] if CoordinationMessageType.CONNECTION.value in kwargs else None
                 if connection is not None:
@@ -119,22 +119,22 @@ class LobbyCoordinator():
                     connection.send(serialize({CoordinationMessageType.GAME_IDS.value: lobby_coordinator._joinable_games()}))
                     lobby_coordinator._add_game_ids_subscriber(connection)
 
-            def __broadcast_game_ids(self):
+            def __broadcast_game_ids(self) -> None:
                 for connection in lobby_coordinator._game_ids_subscribers():
                     try:
                         connection.send(serialize({CoordinationMessageType.GAME_IDS.value: lobby_coordinator._joinable_games()}))
                     except Exception as e:
                         lobby_coordinator.logger.debug(f"Error while broadcasting game IDs to {connection.remote_address}")
 
-            def __update_games_id_db(self):
+            def __update_games_id_db(self) -> None:
                 with open(Config.GAME_IDS_FILE.value, "w") as file:
                     json.dump(lobby_coordinator._joinable_games(), file)
 
-            def __update_and_broadcast_game_ids(self):
+            def __update_and_broadcast_game_ids(self) -> None:
                 self.__update_games_id_db()
                 self.__broadcast_game_ids()
 
-            def __init_game_ids(self):
+            def __init_game_ids(self) -> None:
                 with open(Config.GAME_IDS_FILE.value, "r") as file:
                     try:
                         self.joinable_games = dict(map(lambda k, v: (int(k), str(self.__opposite_symbol(Symbol(v)).value)), json.load(file)))
@@ -152,27 +152,27 @@ class LobbyCoordinator():
     def _joinable_games(self) -> Dict[int, str]:
         return self.__joinable_games
 
-    def _add_joinable_game(self, game_id: int, symbol: str):
+    def _add_joinable_game(self, game_id: int, symbol: str) -> None:
         with self._lock:
             self.__joinable_games[game_id] = symbol
 
-    def _remove_joinable_game(self, game_id: int):
+    def _remove_joinable_game(self, game_id: int) -> None:
         with self._lock:
             self.__joinable_games.pop(game_id)
 
-    def _add_coordinator(self, game_id: int, address: Address):
+    def _add_coordinator(self, game_id: int, address: Address) -> None:
         with self._lock:
             self.__coordinators.update({game_id: address})
 
-    def _remove_coordinator_by_id(self, game_id: int):
+    def _remove_coordinator_by_id(self, game_id: int) -> None:
         with self._lock:
             self.__coordinators.pop(game_id)
 
-    def _add_game_ids_subscriber(self, connection: TcpConnection):
+    def _add_game_ids_subscriber(self, connection: TcpConnection) -> None:
         with self._lock:
             self.__game_ids_subscribers[connection.remote_address] = connection
 
-    def _remove_game_ids_subscriber_by_address(self, address: Address):
+    def _remove_game_ids_subscriber_by_address(self, address: Address) -> None:
         with self._lock:
             if address in self.__game_ids_subscribers:
                 self.__game_ids_subscribers.pop(address)
@@ -181,7 +181,7 @@ class LobbyCoordinator():
         with self._lock:
             return list(self.__game_ids_subscribers.values())
 
-    def _on_new_connection(self, event: ServerEvent, connection: TcpConnection, address: Address, error: Exception):
+    def _on_new_connection(self, event: ServerEvent, connection: TcpConnection, address: Address, error: Exception) -> None:
         match event:
             case ServerEvent.LISTEN:
                 self.logger.debug(f"Server listening on port {address.port} at {address.ip}")
@@ -193,7 +193,7 @@ class LobbyCoordinator():
             case ServerEvent.ERROR:
                 self.logger.debug(error)
 
-    def _on_message_received(self, event: ConnectionEvent, payload: str, connection: TcpConnection, error: Exception):
+    def _on_message_received(self, event: ConnectionEvent, payload: str, connection: TcpConnection, error: Exception) -> None:
         match event:
             case ConnectionEvent.MESSAGE:
                 if payload is not None:
@@ -205,7 +205,7 @@ class LobbyCoordinator():
                 self.logger.debug(error)
                 self._remove_game_ids_subscriber_by_address(connection.remote_address)
 
-    def __handle_message(self, message: Any, **kwargs):
+    def __handle_message(self, message: Any, **kwargs) -> None:
         self.logger.debug(f"Message: {message}, kwargs: {kwargs}")
         if LobbyEvent.CREATE_GAME.matches(message) or \
             LobbyEvent.JOIN_GAME.matches(message) or \

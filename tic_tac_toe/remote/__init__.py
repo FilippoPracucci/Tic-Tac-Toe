@@ -14,17 +14,17 @@ class Address:
     host: str = field()
     port: int
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self._ip = None
         if isinstance(self.port, str):
             self.port = int(self.port)
         assert 0 <= self.port <= 65535, "Port number must be between 0 and 65535"
         self.host = (self.host or '0.0.0.0').strip()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.host}:{self.port}"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{type(self).__name__}(host={self.host}, ip={self.ip}, port={self.port})"
 
     @property
@@ -33,7 +33,6 @@ class Address:
 
         :return: The resolved IPv4 address of the host as a string.
         """
-
         if self._ip is None:
             self._ip = socket.gethostbyname(self.host)
         return self._ip
@@ -44,7 +43,6 @@ class Address:
         :param other: The :class:`Address` to compare with this address.
         :return: `True` when both the IP and port match, `False` otherwise.
         """
-
         return self.ip == other.ip and self.port == other.port
 
     @classmethod
@@ -54,7 +52,6 @@ class Address:
         :param address: The `host:port` string.
         :return: The parsed network :class:`Address`.
         """
-
         host, port = address.split(":")
         return cls(host, int(port))
 
@@ -65,7 +62,6 @@ class Address:
         :param port: The port on which to bind.
         :return: The :class:`Address` created using the wildcard host and the given port.
         """
-
         return cls("0.0.0.0", port)
 
     @classmethod
@@ -75,7 +71,6 @@ class Address:
         :param port: The port on which to bind.
         :return: The :class:`Address` created using the localhost and the given port.
         """
-
         return cls("127.0.0.1", port)
 
     @classmethod
@@ -84,7 +79,6 @@ class Address:
 
         :return: The wildcard :class:`Address` with port zero.
         """
-
         return cls("", 0)
 
     def as_tuple(self) -> Tuple:
@@ -92,7 +86,6 @@ class Address:
 
         :return: The resolved IP address and port as a tuple `(ip, port)`.
         """
-
         return self.ip, self.port
 
 class ConnectionEvent(Enum):
@@ -108,7 +101,6 @@ class ConnectionEvent(Enum):
 
         :return: The set of all the :class:`ConnectionEvent` values.
         """
-
         return set(cls.__members__.values())
 
 class Connection(Protocol):
@@ -120,7 +112,6 @@ class Connection(Protocol):
 
         :return: The local :class:`Address` of the connection.
         """
-
         ...
 
     @local_address.setter
@@ -129,7 +120,6 @@ class Connection(Protocol):
 
         :param address: The local :class:`Address` to set.
         """
-
         ...
 
     @property
@@ -138,7 +128,6 @@ class Connection(Protocol):
 
         :return: The remote :class:`Address` of the connection.
         """
-
         ...
 
     @remote_address.setter
@@ -147,7 +136,6 @@ class Connection(Protocol):
 
         :param address: The remote :class:`Address` to set.
         """
-
         ...
 
 
@@ -156,7 +144,6 @@ class Connection(Protocol):
 
         :param message: The text or bytes payload to send.
         """
-
         ...
 
     def receive(self) -> str:
@@ -164,12 +151,10 @@ class Connection(Protocol):
 
         :return: The decoded message payload, or `None` when an empty frame is received.
         """
-
         ...
 
-    def close(self):
+    def close(self) -> None:
         """Close the socket and notify listeners once."""
-
         ...
 
     def __enter__(self):
@@ -192,7 +177,6 @@ class ServerEvent(Enum):
 
         :return: The set of all the :class:`ServerEvent` values.
         """
-
         return set(cls.__members__.values())
 
 class Server(Protocol):
@@ -207,10 +191,10 @@ class Server(Protocol):
     def listen(self) -> Connection:
         ...
 
-    def receive(self, decode: bool=True) -> Tuple[str | bytes | None, Address | None]:
+    def receive(self, decode: bool = True) -> Tuple[str | bytes | None, Address | None]:
         ...
 
-    def send(self, address: Address, payload: bytes | str):
+    def send(self, address: Address, payload: bytes | str) -> None:
         ...
 
     def __enter__(self):
@@ -219,7 +203,6 @@ class Server(Protocol):
     def __exit__(self, exc_type, exc_val, exc_tb):
         ...
 
-    def close(self):
+    def close(self) -> None:
         """Close the listening socket."""
-
         ...

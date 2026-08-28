@@ -218,7 +218,7 @@ class InputHandler:
         """
         self.post_event(ControlEvent.TIME_ELAPSED, dt=dt)
 
-    def handle_inputs(self, dt=None):
+    def handle_inputs(self, dt: float = None):
         """Handle the pending input events.
 
         :param dt: Optional elapsed time.

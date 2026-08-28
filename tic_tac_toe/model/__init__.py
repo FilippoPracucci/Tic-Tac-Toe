@@ -24,7 +24,7 @@ class TicTacToe(Sized):
         self.time = 0
         self.logger = logger("TicTacToe")
 
-    def __eq__(self, value: 'TicTacToe'):
+    def __eq__(self, value: 'TicTacToe') -> bool:
         return isinstance(value, TicTacToe) and \
             self.size == value.size and \
             self.config == value.config and \
@@ -35,10 +35,10 @@ class TicTacToe(Sized):
             self.updates == value.updates and \
             self.time == value.time
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.size, self.config, self.grid, tuple(self.players), tuple(self.marks), self.turn, self.updates, self.time))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (f'<{type(self).__name__}('
                 f'id={id(self)}, '
                 f'size={self.size}, '
@@ -59,21 +59,22 @@ class TicTacToe(Sized):
         return list(self._players)
 
     @players.setter
-    def players(self, players: List[Player]) -> List[Player]:
+    def players(self, players: List[Player]) -> None:
         """Replace the current player list with a new one.
 
         :param players: The new player list.
-        :return: The updated list of players.
+        :raise: `AssertionError` if any of the players is not an instance of :class:`Player`.
         """
         self._players = []
         for player in players:
             assert isinstance(player, Player), f"Invalid symbol for a player: {player.symbol}"
             self._players.append(player)
 
-    def add_player(self, player: Player):
+    def add_player(self, player: Player) -> None:
         """Add a player to the game if its symbol is available.
 
         :param player: The player to add.
+        :raise: `ValueError` if a player with the same symbol has already joined the game.
         """
         if list(filter(lambda p: p.symbol == player.symbol, self.players)):
             raise ValueError(f"A player with symbol '{player.symbol}' has already joined the game!")
@@ -85,15 +86,17 @@ class TicTacToe(Sized):
 
         :param player: The player reference to match.
         :return: The matching player instance.
+        :raise: `ValueError` if no player with the given symbol has joined the game.
         """
         if player not in self._players:
             raise ValueError(f"No such a player with {player.symbol}")
         return list(filter(lambda p: p == player, self._players))[0]
 
-    def remove_player_by_symbol(self, symbol: Symbol):
+    def remove_player_by_symbol(self, symbol: Symbol) -> None:
         """Remove a player using its symbol.
 
         :param symbol: The symbol of the player to remove.
+        :raise: `ValueError` if no player with the given symbol has joined the game.
         """
         if not list(filter(lambda p: p.symbol == symbol, self._players)):
             raise ValueError(f"No such player with {symbol}")
@@ -116,11 +119,11 @@ class TicTacToe(Sized):
         return sorted(self._marks, key=lambda m: (m.cell.x, m.cell.y))
 
     @marks.setter
-    def marks(self, marks) -> List[Mark]:
+    def marks(self, marks) -> None:
         """Replace the current mark list with a new one.
 
         :param marks: The new mark list.
-        :return: The updated list of marks.
+        :raise: `AssertionError` if any of the marks is not an instance of :class:`Mark`.
         """
         self._marks = []
         for mark in marks:
@@ -146,6 +149,7 @@ class TicTacToe(Sized):
 
         :param cell: The cell to inspect.
         :return: `True` if the cell is occupied; otherwise `False`.
+        :raise: `AssertionError` if the cell is `None`.
         """
         assert cell is not None, "Cell not provided, but necessary"
         return list(filter(lambda m: m.cell == cell, self.marks))
@@ -155,14 +159,14 @@ class TicTacToe(Sized):
 
         :param cell: The cell to inspect.
         :return: The mark placed in the given cell.
-        :raise: `ValueError` if the cell is not marked.
+        :raise: `ValueError` if the given cell is not marked.
         """
         if self.has_mark(cell):
             return list(filter(lambda m: m.cell == cell, self.marks)).pop()
         else:
             raise ValueError(f"{cell} is not marked")
 
-    def remove_mark(self, cell: Cell):
+    def remove_mark(self, cell: Cell) -> None:
         """Remove the mark placed on a specific cell.
 
         :param cell: The cell whose mark should be removed.
@@ -170,7 +174,7 @@ class TicTacToe(Sized):
         self._marks.remove(self.get_mark(cell))
         self.logger.debug(f"Removed mark on {cell} from {self}")
 
-    def remove_random_mark(self):
+    def remove_random_mark(self) -> None:
         """Remove a random mark owned by the active player."""
         turn_marks = self.get_crosses() if self.turn.is_cross else self.get_noughts()
         if len(turn_marks) >= self.grid.dim:
@@ -216,13 +220,13 @@ class TicTacToe(Sized):
         self.logger.debug(f"Game not ended")
         return None
 
-    def reset_grid(self):
+    def reset_grid(self) -> None:
         """Clear all marks and recreate a fresh grid of the same dimension."""
         self.marks = list()
         self.grid = Grid(self.grid.dim)
         self.logger.debug(f"Reset grid")
 
-    def update(self, delta_time: float):
+    def update(self, delta_time: float) -> None:
         """Advance the game state by one update cycle.
 
         :param delta_time: The elapsed time since the previous update.
@@ -238,12 +242,12 @@ class TicTacToe(Sized):
         """
         return list(filter(lambda p: p.symbol == self.turn, self.players))[0]
 
-    def change_turn(self):
+    def change_turn(self) -> None:
         """Switch turn to the other player."""
         self.turn = Symbol.CROSS if self.turn.is_nought else Symbol.NOUGHT
         self.logger.debug(f"Change turn. Now the player '{self.turn.value}' is in turn")
 
-    def override(self, other: 'TicTacToe'):
+    def override(self, other: 'TicTacToe') -> None:
         """Override this :class:`TicTacToe` instance with the one given.
 
         :param other: The new game state to override with.

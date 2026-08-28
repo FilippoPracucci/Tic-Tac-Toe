@@ -35,7 +35,7 @@ class ScreenTicTacToeView(TicTacToeView):
     :param screen: The optional pygame surface to draw on.
     """
 
-    def __init__(self, tic_tac_toe: TicTacToe, title: str, screen: Surface=None):
+    def __init__(self, tic_tac_toe: TicTacToe, title: str, screen: Surface = None):
         super().__init__(tic_tac_toe)
         self._title = title
         pygame.display.set_caption(title)
@@ -83,6 +83,7 @@ class ScreenTicTacToeView(TicTacToeView):
         """Render a single mark on the board.
 
         :param mark: The :class:`Mark` to draw.
+        :raises AssertionError: If the mark has a symbol not present in the valid ones.
         """
         assert mark.symbol in Symbol.values(), f"Error! Passed a mark with a not valid ({mark.symbol})."
         self._render_nought(mark) if mark.symbol.is_nought else self._render_cross(mark)

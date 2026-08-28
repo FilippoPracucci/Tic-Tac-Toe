@@ -1,4 +1,5 @@
 from typing import Any, Dict
+from collections.abc import Callable
 from tic_tac_toe.remote import Connection, Server, ConnectionEvent, ServerEvent, Address
 from tic_tac_toe.log import logger
 import socket
@@ -11,7 +12,7 @@ class TcpConnection(Connection):
     :param callback: The optional function to invoke for connection events.
     """
 
-    def __init__(self, socket: socket.socket, callback=None):
+    def __init__(self, socket: socket.socket, callback: Callable = None):
         self.logger = logger("TcpConnection")
         self.__socket = socket
         self.__local_address = Address(*self.__socket.getsockname())
@@ -39,22 +40,20 @@ class TcpConnection(Connection):
         self.__remote_address = address
 
     @property
-    def callback(self):
+    def callback(self) -> Callable:
         """Return the callback to invoke for connection events.
         
         :return: The callback configured for connection events, or a no-op function if none is configured.
         """
-
         return self.__callback or (lambda *_: None)
     
     @callback.setter
-    def callback(self, value):
+    def callback(self, value: Callable) -> None:
         """Set the event callback and start the thread to receive messages.
 
         :param value: The callable to invoke for connection events.
         :raise ValueError: If a callback has already been configured.
         """
-
         if self.__callback:
             raise ValueError("Callback can only be set once")
         self.__callback = value
@@ -62,15 +61,14 @@ class TcpConnection(Connection):
             self.__receiver_thread.start()
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         """Return whether the underlying socket has been closed.
 
         :return: ``True`` if the socket is closed, ``False`` otherwise.
         """
-
         return self.__socket._closed
-    
-    def send(self, message: Any):
+
+    def send(self, message: Any) -> None:
         if not isinstance(message, bytes):
             message = message.encode()
             message = int.to_bytes(len(message), 2, 'big') + message
@@ -85,13 +83,13 @@ class TcpConnection(Connection):
         self.logger.debug(f"Received {length} bytes: {payload}")
         return payload
     
-    def close(self):
+    def close(self) -> None:
         self.__socket.close()
         if not self.__notify_closed:
             self.on_event(ConnectionEvent.CLOSE)
             self.__notify_closed = True
 
-    def on_event(self, event: ConnectionEvent, payload: str=None, connection: Connection=None, error: Exception=None):
+    def on_event(self, event: ConnectionEvent, payload: str = None, connection: Connection = None, error: Exception = None) -> None:
         """Trigger the configured callback for a connection event.
 
         :param event: The :class:`ConnectionEvent`.
@@ -99,12 +97,11 @@ class TcpConnection(Connection):
         :param connection: The optional connection.
         :param error: The optional exception.
         """
-
         if connection is None:
             connection = self
         self.callback(event, payload, connection, error)
 
-    def __handle_incoming_messages(self):
+    def __handle_incoming_messages(self) -> None:
         try:
             while not self.closed:
                 message = self.receive()
@@ -125,7 +122,7 @@ class TcpServer(Server):
     :param callback: The optional function to invoke for server events.
     """
 
-    def __init__(self, port: int, callback=None):
+    def __init__(self, port: int, callback: Callable = None):
         self.logger = logger("TcpServer")
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._address = Address.local_port_on_any_interface(port)
@@ -143,7 +140,6 @@ class TcpServer(Server):
 
         :return: The :class:`Address` of the server.
         """
-
         return Address(*self.__socket.getsockname())
     
     @property
@@ -152,33 +148,30 @@ class TcpServer(Server):
         
         :return: The mapping of remote addresses to the related :class:`TcpConnection`.
         """
-
         return self._connections
 
     @property
-    def callback(self):
+    def callback(self) -> Callable:
         """Return the callback to invoke for server events.
 
         :return: The callback configured for server events, or a no-op function if none is configured.
         """
-
         return self.__callback or (lambda *_: None)
     
     @callback.setter
-    def callback(self, value):
+    def callback(self, value: Callable) -> None:
         """Set the event callback and start the thread to listen for new connections.
         
         :param value: The callable to invoke for server events.
         :raise ValueError: If a callback has already been configured.
         """
-
         if self.__callback:
             raise ValueError("Callback can only be set once")
         self.__callback = value
         if value:
             self.__listener_thread.start()
 
-    def on_event(self, event: str, connection: Connection=None, address: Address=None, error: Exception=None):
+    def on_event(self, event: str, connection: Connection = None, address: Address = None, error: Exception = None) -> None:
         """Trigger the configured callback for a server event.
 
         :param event: The event.
@@ -186,13 +179,12 @@ class TcpServer(Server):
         :param address: The optional :class:`Address`.
         :param error: The optional :class:`Exception`.
         """
-
         self.__callback(event, connection, address, error)
 
-    def close(self):
+    def close(self) -> None:
         self.__socket.close()
 
-    def __handle_incoming_connections(self):
+    def __handle_incoming_connections(self) -> None:
         self.__socket.listen()
         self.on_event(ServerEvent.LISTEN, address=self._address)
         try:
@@ -215,7 +207,7 @@ class TcpClient(TcpConnection):
     :param callback: The optional function to invoke for connection events.
     """
 
-    def __init__(self, server_address: Address, callback=None):
+    def __init__(self, server_address: Address, callback: Callable = None):
         self.logger = logger("TcpClient")
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind(Address.local_port_on_any_interface(0).as_tuple())
