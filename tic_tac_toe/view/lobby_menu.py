@@ -10,6 +10,7 @@ from pygame_menu.widgets.widget.button import Button
 from pygame_menu.widgets.widget.frame import Frame
 from pygame_menu.widgets.widget.label import Label
 from pygame import Vector2
+from tic_tac_toe.controller import LobbyEvent
 from tic_tac_toe.model import Symbol
 
 class LobbyMenu(pygame_menu.Menu):
@@ -86,6 +87,9 @@ class LobbyMenu(pygame_menu.Menu):
         self._populate_join_section()
 
     def _poll_updates(self):
+        if pygame.event.get(LobbyEvent.COORDINATOR_STOPPED.value):
+            self.stop()
+            return
         try:
             new_joinable_games = self._updates_queue.get_nowait()
         except Empty:

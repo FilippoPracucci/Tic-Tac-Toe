@@ -12,6 +12,7 @@ class LobbyEvent(Enum):
     DELETE_GAME = pygame.event.custom_type()
     JOIN_GAME = pygame.event.custom_type()
     REQUEST_JOINABLE_GAME_IDS = pygame.event.custom_type()
+    COORDINATOR_STOPPED = pygame.event.custom_type()
 
     @classmethod
     def all(cls) -> Set['LobbyEvent']:
@@ -241,6 +242,8 @@ class LobbyEventHandler:
                 self.on_join_game(**event.dict)
             elif LobbyEvent.REQUEST_JOINABLE_GAME_IDS.matches(event):
                 self.on_request_joinable_game_ids(**event.dict)
+            elif LobbyEvent.COORDINATOR_STOPPED.matches(event):
+                self.on_coordinator_stopped(**event.dict)
 
     def create_event(self, event: pygame.event.Event | LobbyEvent, **kwargs) -> pygame.event.Event:
         """Create a pygame event object from a lobby event or a pygame event.
@@ -284,6 +287,13 @@ class LobbyEventHandler:
 
     def on_request_joinable_game_ids(self, **kwargs):
         """Handle a request to list the games currently available for joining.
+
+        :param kwargs: Additional arguments.
+        """
+        pass
+
+    def on_coordinator_stopped(self, **kwargs):
+        """Handle the unexpected stop of a coordinator.
 
         :param kwargs: Additional arguments.
         """

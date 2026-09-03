@@ -24,7 +24,7 @@ class TicTacToeTerminal(TicTacToeGame):
     def __init__(self, settings: Settings = None, lobby_menu: LobbyMenu = None, message_to_show: str = None):
         settings = settings or Settings()
         self.symbol: Symbol = None
-        self.connected_to_coordinator = False
+        self.connected_to_coordinator: bool = False
         self.joinable_game_ids: Dict[int, str] = {}
         self.joinable_games_updates: Queue[Dict[int, str]] = Queue()
         self._lobby_menu: LobbyMenu = lobby_menu
@@ -118,17 +118,8 @@ class TicTacToeTerminal(TicTacToeGame):
                     print(terminal._message_to_show)
                     terminal.restart()
                 else:
-                    default_message_to_show = 'Other player disconnected'
-                    if terminal._message_to_show is None:
-                        terminal._message_to_show = default_message_to_show
-                    print(f"Game ended: {terminal._message_to_show}")
-                    if terminal._lobby_menu is not None:
-                        terminal._lobby_menu.stop()
-                        terminal.stop()
-                    elif terminal._message_to_show == default_message_to_show:
-                        terminal.restart()
-                    else:
-                        terminal.stop()
+                    print(f"Game ended: Other player disconnected")
+                    terminal.restart()
 
         return Controller(terminal.tic_tac_toe)
 
@@ -140,9 +131,10 @@ class TicTacToeTerminal(TicTacToeGame):
                     self.__handle_message(deserialize(message))
             except ConnectionResetError:
                 if self.running:
-                    self._message_to_show = "coordinator stopped"
-                    self.logger.debug(self._message_to_show)
-                    self.controller.on_game_over(self.tic_tac_toe)
+                    pygame.event.post(pygame.event.Event(LobbyEvent.COORDINATOR_STOPPED.value))
+                    print(f"Game ended: coordinator stopped")
+                    self.stop()
+                break
 
     def __handle_message(self, message: Any) -> None:
         if isinstance(message, pygame.event.Event):
