@@ -1,11 +1,12 @@
 from datetime import datetime
-from queue import Queue
+from queue import Empty, Queue
 from typing import Any, Dict
 from pygame.event import Event
 import pygame
 from tic_tac_toe.log import logger
 from tic_tac_toe import TicTacToeGame
 from tic_tac_toe.remote import *
+from tic_tac_toe.remote.centralised.terminal.stdin_reader import _StdinReader
 from tic_tac_toe.utils import Settings
 from tic_tac_toe.model import TicTacToe
 from tic_tac_toe.model.game_object import Symbol
@@ -25,7 +26,7 @@ class TicTacToeTerminal(TicTacToeGame):
         settings = settings or Settings()
         self.symbol: Symbol = None
         self.connected_to_coordinator: bool = False
-        self.joinable_game_ids: Dict[int, str] = {}
+        self.joinable_games: Dict[int, str] = {}
         self.joinable_games_updates: Queue[Dict[int, str]] = Queue()
         self._lobby_menu: LobbyMenu = lobby_menu
         self._message_to_show: str = message_to_show
@@ -35,11 +36,12 @@ class TicTacToeTerminal(TicTacToeGame):
         self._lock = threading.RLock()
         self._thread_receiver = threading.Thread(target=self._handle_ingoing_messages, daemon=True)
         self._thread_receiver.start()
+        self._stop_event = threading.Event()
+        self._stdin_reader = _StdinReader.instance()
         self._thread_sender = threading.Thread(target=self._send_message, daemon=True)
-        self._thread_sender.start()
-        self.controller.post_event(LobbyEvent.REQUEST_JOINABLE_GAME_IDS)
+        self.controller.post_event(LobbyEvent.REQUEST_JOINABLE_GAMES)
 
-    def wait_for_game_ids(self, timeout: float = None) -> Dict[int, str]:
+    def wait_for_joinable_games(self, timeout: float = None) -> Dict[int, str]:
         """Wait for updated list of joinable game IDs from the lobby.
 
         :param timeout: The maximum time to wait in seconds.
@@ -47,7 +49,7 @@ class TicTacToeTerminal(TicTacToeGame):
         """
         try:
             ids = self.joinable_games_updates.get(timeout=timeout)
-            self.joinable_game_ids = ids
+            self.joinable_games = ids
             return ids
         except Exception as e:
             self.logger.error(f"Error while waiting for game IDs: {e}")
@@ -93,10 +95,6 @@ class TicTacToeTerminal(TicTacToeGame):
                 terminal.view.title = f"Player {symbol.value}"
                 self.post_event(LobbyEvent.JOIN_GAME, game_id=game_id, symbol=symbol)
 
-            def on_change_turn(self, tic_tac_toe: TicTacToe) -> None:
-                tic_tac_toe.change_turn()
-                tic_tac_toe.remove_random_mark()
-
             def on_time_elapsed(self, tic_tac_toe: TicTacToe, dt: float, status: TicTacToe = None) -> None: # type: ignore[override]
                 if not status:
                     tic_tac_toe.update(dt)
@@ -115,11 +113,10 @@ class TicTacToeTerminal(TicTacToeGame):
             def on_game_over(self, tic_tac_toe: TicTacToe, **kwargs) -> None:
                 if "symbol" in kwargs:
                     terminal._message_to_show = f"You won!" if kwargs["symbol"] == terminal.symbol else f"You lost!"
-                    print(terminal._message_to_show)
-                    terminal.restart()
                 else:
-                    print(f"Game ended: Other player disconnected")
-                    terminal.restart()
+                    terminal._message_to_show = "\"Game ended: Other player disconnected\""
+                print(terminal._message_to_show)
+                terminal.restart()
 
         return Controller(terminal.tic_tac_toe)
 
@@ -148,9 +145,9 @@ class TicTacToeTerminal(TicTacToeGame):
         if CoordinationMessageType.ERROR.value in message:
             self.logger.debug(message[CoordinationMessageType.ERROR.value])
             self.stop()
-        elif CoordinationMessageType.GAME_IDS.value in message:
-            self.joinable_game_ids = message[CoordinationMessageType.GAME_IDS.value]
-            self.joinable_games_updates.put(self.joinable_game_ids)
+        elif CoordinationMessageType.JOINABLE_GAMES.value in message:
+            self.joinable_games = message[CoordinationMessageType.JOINABLE_GAMES.value]
+            self.joinable_games_updates.put(self.joinable_games)
         elif CoordinationMessageType.COORDINATOR.value in message:
             coord_address = Address(message[CoordinationMessageType.COORDINATOR.value][0], message[CoordinationMessageType.COORDINATOR.value][1])
             self.logger.debug(f"Received coordinator address {coord_address}")
@@ -181,14 +178,16 @@ class TicTacToeTerminal(TicTacToeGame):
     def before_run(self) -> None:
         super().before_run()
         if self._lobby_menu is not None:
-            self.wait_for_game_ids(timeout=5)
+            self.wait_for_joinable_games(timeout=5)
             self._lobby_menu.start(
                 callback_on_create_game=self._callback_on_create_game,
                 callback_on_join_game=self._callback_on_join_game,
-                joinable_games=self.joinable_game_ids,
+                joinable_games=self.joinable_games,
                 updates_queue=self.joinable_games_updates,
                 message_to_show=self._message_to_show
             )
+        print("You can chat with the opponent by typing your message and pressing Enter.")
+        self._thread_sender.start()
 
     def after_run(self) -> None:
         super().after_run()
@@ -197,12 +196,16 @@ class TicTacToeTerminal(TicTacToeGame):
     def _send_message(self) -> None:
         while self.running:
             try:
-                msg = input()
-                self.logger.debug(f"Send {msg} to the opponent")
-                if msg is not None:
+                msg = self._stdin_reader.queue.get(timeout=0.2)
+            except Empty:
+                continue
+            if self.running:
+                try:
+                    self.logger.debug(f"Send {msg} to the opponent")
                     self.client.send(serialize(self.message(msg, f"Player '{self.symbol.value}'")))
-            except (EOFError, KeyboardInterrupt):
-                self.logger.debug("Error while sending the message")
+                except Exception as e:
+                    self.logger.debug(f"Could not send message, connection closed: {e}")
+                    break
 
     def message(self, text: str, sender: str, timestamp: datetime = None) -> str:
         """Format a chat message with timestamp and sender information.
@@ -218,8 +221,15 @@ class TicTacToeTerminal(TicTacToeGame):
 
     def restart(self) -> None:
         """Stop the current game and restart a new session."""
+        self.__clear_screen()
         self.stop()
         main_terminal(self.settings, message_to_show=self._message_to_show)
+
+    def __clear_screen(self) -> None:
+        """Clear the terminal screen."""
+        import platform, subprocess
+        command = 'cls' if platform.system().lower() == 'windows' else 'clear'
+        subprocess.run([command], shell=True)
 
 def main_terminal(settings: Settings = None, message_to_show: str = None):
     """Initialize and run the terminal game client.

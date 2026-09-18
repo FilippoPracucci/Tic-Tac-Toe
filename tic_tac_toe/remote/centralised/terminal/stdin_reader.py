@@ -1,0 +1,29 @@
+import threading
+from queue import Queue
+
+
+class _StdinReader:
+    """Single process-wide instance of a stdin reader."""
+
+    _instance = None
+    _instance_lock = threading.Lock()
+
+    def __init__(self):
+        self.queue: Queue[str] = Queue()
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._thread.start()
+
+    def _run(self) -> None:
+        while True:
+            try:
+                line = input()
+            except (EOFError, KeyboardInterrupt):
+                return
+            self.queue.put(line)
+
+    @classmethod
+    def instance(cls) -> "_StdinReader":
+        with cls._instance_lock:
+            if cls._instance is None:
+                cls._instance = cls()
+            return cls._instance
