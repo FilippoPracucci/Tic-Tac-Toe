@@ -11,7 +11,7 @@ class LobbyEvent(Enum):
     CREATE_GAME = pygame.event.custom_type()
     DELETE_GAME = pygame.event.custom_type()
     JOIN_GAME = pygame.event.custom_type()
-    REQUEST_JOINABLE_GAME_IDS = pygame.event.custom_type()
+    REQUEST_JOINABLE_GAMES = pygame.event.custom_type()
     COORDINATOR_STOPPED = pygame.event.custom_type()
 
     @classmethod
@@ -73,7 +73,6 @@ class ControlEvent(Enum):
     PLAYER_JOIN_GAME = pygame.event.custom_type()
     PLAYER_JOIN = pygame.event.custom_type()
     PLAYER_LEAVE = pygame.event.custom_type()
-    GAME_START = pygame.event.custom_type()
     GAME_OVER = pygame.QUIT # TODO: change to a custom type (return to home page not quit)
     MARK_PLACED = pygame.event.custom_type()
     CHANGE_TURN = pygame.event.custom_type()
@@ -135,8 +134,7 @@ class PlayerAction(Enum):
     """Describes the actions a player can perform during a game."""
 
     PLACE_MARK = 0
-    STOP = 1
-    QUIT = 2
+    QUIT = 1
 
     @classmethod
     def all(cls) -> Set['PlayerAction']:
@@ -240,28 +238,10 @@ class LobbyEventHandler:
                 self.on_delete_game(**event.dict)
             elif LobbyEvent.JOIN_GAME.matches(event):
                 self.on_join_game(**event.dict)
-            elif LobbyEvent.REQUEST_JOINABLE_GAME_IDS.matches(event):
-                self.on_request_joinable_game_ids(**event.dict)
+            elif LobbyEvent.REQUEST_JOINABLE_GAMES.matches(event):
+                self.on_request_joinable_games(**event.dict)
             elif LobbyEvent.COORDINATOR_STOPPED.matches(event):
                 self.on_coordinator_stopped(**event.dict)
-
-    def create_event(self, event: pygame.event.Event | LobbyEvent, **kwargs) -> pygame.event.Event:
-        """Create a pygame event object from a lobby event or a pygame event.
-
-        :param event: The pygame event instance or a :class:`LobbyEvent`.
-        :param kwargs: Additional data to attach to the event payload.
-        :return: The constructed event.
-        """
-        return create_event(event, **kwargs)
-
-    def post_event(self, event: pygame.event.Event | LobbyEvent, **kwargs) -> pygame.event.Event:
-        """Post a pygame event or a :class:`LobbyEvent` into the pygame queue.
-
-        :param event: The event to post.
-        :param kwargs: Extra payload values for the emitted event.
-        :return: The posted event.
-        """
-        return post_event(event, **kwargs)
 
     def on_create_game(self, **kwargs):
         """Handle a request to create a new game from the lobby.
@@ -285,7 +265,7 @@ class LobbyEventHandler:
         """
         pass
 
-    def on_request_joinable_game_ids(self, **kwargs):
+    def on_request_joinable_games(self, **kwargs):
         """Handle a request to list the games currently available for joining.
 
         :param kwargs: Additional arguments.
@@ -321,8 +301,6 @@ class EventHandler:
                 self.on_player_join(self._tic_tac_toe, **event.dict)
             elif ControlEvent.PLAYER_LEAVE.matches(event):
                 self.on_player_leave(self._tic_tac_toe, **event.dict)
-            elif ControlEvent.GAME_START.matches(event):
-                self.on_game_start(self._tic_tac_toe)
             elif ControlEvent.GAME_OVER.matches(event):
                 self.on_game_over(self._tic_tac_toe, **event.dict)
             elif ControlEvent.MARK_PLACED.matches(event):
@@ -361,13 +339,6 @@ class EventHandler:
 
         :param tic_tac_toe: The current :class:`TicTacToe` instance.
         :param symbol: The symbol of the leaving player.
-        """
-        pass
-
-    def on_game_start(self, tic_tac_toe: TicTacToe):
-        """Start of the game.
-
-        :param tic_tac_toe: The :class:`TicTacToe` instance to start.
         """
         pass
 

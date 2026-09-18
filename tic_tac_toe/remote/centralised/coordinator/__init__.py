@@ -55,6 +55,10 @@ class TicTacToeCoordinator(TicTacToeGame):
                         connection: TcpConnection = kwargs[CoordinationMessageType.CONNECTION.value]
                         connection.send(serialize({"error": str(exception)}))
 
+            def on_change_turn(self, tic_tac_toe: TicTacToe) -> None:
+                tic_tac_toe.change_turn()
+                tic_tac_toe.remove_random_mark()
+
             def on_player_leave(self, tic_tac_toe: TicTacToe, symbol: Symbol) -> None:
                 self.on_game_over(tic_tac_toe)
 

@@ -79,6 +79,7 @@ class LobbyMenu(pygame_menu.Menu):
         self._symbol_selector = self.add.dropselect(
             title="Symbol: ",
             items=list(map(lambda s: str(s.value), Symbol.values())),
+            default=1,
             placeholder="Select a symbol",
             onchange=self._change_symbol_selected
         )

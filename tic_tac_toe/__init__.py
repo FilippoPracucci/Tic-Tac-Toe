@@ -21,7 +21,6 @@ class TicTacToeGame:
             players=players
         )
         self.dt = None
-        self._turn: Player = None
         self.view = self.create_view() if self.settings.gui else ShowNothingTicTacToeView(self.tic_tac_toe)
         self.clock = pygame.time.Clock()
         self.running = True
@@ -59,17 +58,12 @@ class TicTacToeGame:
             def __init__(self):
                 super().__init__(game.tic_tac_toe)
 
-            def on_player_join(this, tic_tac_toe: TicTacToe, symbol: Symbol, **kwargs):
-                super().on_player_join(tic_tac_toe, symbol, **kwargs)
-                if not game.turn:
-                    game.turn = tic_tac_toe.get_turn_player()
+            def on_player_leave(self, tic_tac_toe: TicTacToe, symbol: Symbol):
+                super().on_player_leave(tic_tac_toe, symbol=symbol)
+                self.on_game_over(tic_tac_toe, symbol=symbol.opposite)
 
-            def on_change_turn(this, _):
-                super().on_change_turn(game.tic_tac_toe)
-                game.turn = game.tic_tac_toe.get_turn_player()
-
-            def on_game_over(this, tic_tac_toe: TicTacToe, symbol: Symbol):
-                super().on_game_over(tic_tac_toe, symbol)
+            def on_game_over(self, tic_tac_toe: TicTacToe, **kwargs):
+                super().on_game_over(tic_tac_toe, **kwargs)
                 game.stop()
 
         return Controller()

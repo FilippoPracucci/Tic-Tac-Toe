@@ -144,6 +144,10 @@ class Symbol(Enum):
         """
         return self.value == "X"
 
+    @property
+    def opposite(self) -> 'Symbol':
+        return Symbol.NOUGHT if self.is_cross else Symbol.CROSS
+
     @classmethod
     def values(cls) -> List['Symbol']:
         """Return all available symbols.

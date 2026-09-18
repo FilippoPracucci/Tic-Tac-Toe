@@ -26,8 +26,9 @@ class TicTacToeInputHandler(InputHandler):
                 case pygame.MOUSEBUTTONDOWN:
                     self.mouse_clicked()
                 case pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        self.post_event(ControlEvent.PLAYER_LEAVE, symbol=symbol)
+                    actions = self._command.to_key_map()
+                    if event.key in actions and (actions[event.key] == PlayerAction.QUIT):
+                        self.post_event(ControlEvent.PLAYER_LEAVE, symbol=symbol or self._tic_tac_toe.turn)
         if dt is not None:
             self.time_elapsed(dt)
 
@@ -45,9 +46,6 @@ class TicTacToeEventHandler(EventHandler):
 
     def on_player_leave(self, tic_tac_toe: TicTacToe, symbol: Symbol) -> None:
         tic_tac_toe.remove_player_by_symbol(symbol)
-
-    def on_game_start(self, tic_tac_toe: TicTacToe) -> None:
-        pass
 
     def on_game_over(self, tic_tac_toe: TicTacToe, **kwargs) -> None:
         if "symbol" in kwargs:

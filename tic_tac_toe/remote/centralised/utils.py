@@ -5,12 +5,12 @@ class Config(Enum):
 
     DEFAULT_HOST = "localhost"
     DEFAULT_PORT = 12345
-    GAME_IDS_FILE = "games.json"
+    JOINABLE_GAMES_FILE = "joinable_games.json"
 
 class CoordinationMessageType(Enum):
     """Enumeration of message types used for coordination in a centralised game in remote mode."""
 
-    GAME_IDS = "game_ids"
+    JOINABLE_GAMES = "joinable_games"
     COORDINATOR = "coordinator"
     CONNECTION = "connection"
     ERROR = "error"
