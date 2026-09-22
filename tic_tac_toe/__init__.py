@@ -28,24 +28,6 @@ class TicTacToeGame:
         if self.settings.debug:
             self.logger.setLevel(logging.INFO)
 
-    @property
-    def turn(self) -> Player:
-        """Return the active player.
-
-        :return: The current player.
-        """
-        return self._turn
-
-    @turn.setter
-    def turn(self, player: Player) -> None:
-        """Set the active player.
-
-        :param player: The new active player.
-        :raises AssertionError: If the given player is not an instance of :class:`Player`.
-        """
-        assert isinstance(player, Player), f"Invalid symbol for a player: {player.symbol}"
-        self._turn = player
-
     def create_controller(game: 'TicTacToeGame'):
         """Create the local controller bound to the current game instance.
 

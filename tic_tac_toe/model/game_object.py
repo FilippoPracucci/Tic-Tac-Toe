@@ -187,7 +187,7 @@ class Mark(GameObject):
     from .grid import Cell
 
     def __init__(self, cell: Cell, symbol: Symbol, size: Vector2 = Vector2(0), position: Vector2 = None, name: str = None):
-        super().__init__(size, position, name or "mark_" + symbol.name.lower())
+        super().__init__(size, position, name or f"mark_({cell.x},{cell.y})")
         self.cell = cell
         self.symbol = symbol
 

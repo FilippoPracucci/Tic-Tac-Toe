@@ -1,8 +1,7 @@
 import threading
 from queue import Queue
 
-
-class _StdinReader:
+class StdinReader:
     """Single process-wide instance of a stdin reader."""
 
     _instance = None
@@ -22,7 +21,8 @@ class _StdinReader:
             self.queue.put(line)
 
     @classmethod
-    def instance(cls) -> "_StdinReader":
+    def instance(cls) -> "StdinReader":
+        """Get the single instance of the stdin reader."""
         with cls._instance_lock:
             if cls._instance is None:
                 cls._instance = cls()

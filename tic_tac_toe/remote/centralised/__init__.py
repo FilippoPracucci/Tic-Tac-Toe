@@ -20,7 +20,7 @@ class LobbyCoordinator():
 
     def __init__(self, settings: Settings = None):
         self.logger = logger("LobbyCoordinator")
-        self.settings = settings
+        self.settings = settings or Settings()
         self.controller = self._create_controller()
         self.server = TcpServer(self.settings.port or Config.DEFAULT_PORT.value, self._on_new_connection)
         self.clock = pygame.time.Clock()
@@ -203,12 +203,12 @@ class LobbyCoordinator():
                 self._remove_joinable_games_subscriber_by_address(connection.remote_address)
 
     def __handle_message(self, message: Any, **kwargs) -> None:
-        self.logger.debug(f"Message: {message}, kwargs: {kwargs}")
-        if LobbyEvent.CREATE_GAME.matches(message) or \
-            LobbyEvent.JOIN_GAME.matches(message) or \
-            LobbyEvent.REQUEST_JOINABLE_GAMES.matches(message):
-            if CoordinationMessageType.CONNECTION.value in kwargs:
-                message.connection = kwargs[CoordinationMessageType.CONNECTION.value]
+        if any(e.matches(message) for e in (
+            LobbyEvent.CREATE_GAME,
+            LobbyEvent.JOIN_GAME,
+            LobbyEvent.REQUEST_JOINABLE_GAMES
+        )) and (CoordinationMessageType.CONNECTION.value in kwargs):
+            message.connection = kwargs[CoordinationMessageType.CONNECTION.value]
         pygame.event.post(message)
 
 def main_lobby(settings: Settings=None):

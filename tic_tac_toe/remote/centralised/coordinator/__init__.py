@@ -47,6 +47,10 @@ class TicTacToeCoordinator(TicTacToeGame):
             def __init__(self, tic_tac_toe: TicTacToe):
                 TicTacToeEventHandler.__init__(self, tic_tac_toe)
 
+            def post_event(self, event: Event | LobbyEvent | ControlEvent, **kwargs) -> Event:
+                if coordinator.running:
+                    super().post_event(event, **kwargs)
+
             def on_player_join(self, tic_tac_toe: TicTacToe, symbol: Symbol, **kwargs) -> None:
                 try:
                     super().on_player_join(tic_tac_toe, symbol=symbol)
@@ -155,7 +159,7 @@ class TicTacToeCoordinator(TicTacToeGame):
                 self.remove_peer((connection.remote_address.host, connection.remote_address.port))
 
     def __handle_message(self, message: Any, **kwargs) -> None:
-        if isinstance(message, pygame.event.Event):
+        if isinstance(message, Event):
             if ControlEvent.PLAYER_JOIN.matches(message):
                 if CoordinationMessageType.CONNECTION.value in kwargs:
                     message.connection = kwargs[CoordinationMessageType.CONNECTION.value]

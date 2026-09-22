@@ -6,11 +6,11 @@ import pygame
 from tic_tac_toe.log import logger
 from tic_tac_toe import TicTacToeGame
 from tic_tac_toe.remote import *
-from tic_tac_toe.remote.centralised.terminal.stdin_reader import _StdinReader
+from tic_tac_toe.remote.centralised.terminal.stdin_reader import StdinReader
 from tic_tac_toe.utils import Settings
 from tic_tac_toe.model import TicTacToe
 from tic_tac_toe.model.game_object import Symbol
-from tic_tac_toe.controller import LobbyEvent, ControlEvent
+from tic_tac_toe.controller import LobbyEvent, ControlEvent, PlayerAction
 from tic_tac_toe.remote.tcp import TcpClient, Address
 from tic_tac_toe.remote.presentation import serialize, deserialize
 from tic_tac_toe.view.lobby_menu import LobbyMenu
@@ -37,7 +37,7 @@ class TicTacToeTerminal(TicTacToeGame):
         self._thread_receiver = threading.Thread(target=self._handle_ingoing_messages, daemon=True)
         self._thread_receiver.start()
         self._stop_event = threading.Event()
-        self._stdin_reader = _StdinReader.instance()
+        self._stdin_reader = StdinReader.instance()
         self._thread_sender = threading.Thread(target=self._send_message, daemon=True)
         self.controller.post_event(LobbyEvent.REQUEST_JOINABLE_GAMES)
 
@@ -79,7 +79,8 @@ class TicTacToeTerminal(TicTacToeGame):
                     return super().handle_inputs(dt, terminal.symbol)
                 else:
                     for event in pygame.event.get(pygame.KEYDOWN):
-                        if event.key == pygame.K_ESCAPE:
+                        actions = self._command.to_key_map()
+                        if event.key in actions and (actions[event.key] == PlayerAction.QUIT):
                             self.post_event(ControlEvent.PLAYER_LEAVE, symbol=terminal.symbol)
                     pygame.event.clear(self.INPUT_EVENTS)
 
@@ -114,7 +115,7 @@ class TicTacToeTerminal(TicTacToeGame):
                 if "symbol" in kwargs:
                     terminal._message_to_show = f"You won!" if kwargs["symbol"] == terminal.symbol else f"You lost!"
                 else:
-                    terminal._message_to_show = "\"Game ended: Other player disconnected\""
+                    terminal._message_to_show = "\"Game ended: other player disconnected or left\""
                 print(terminal._message_to_show)
                 terminal.restart()
 
@@ -149,7 +150,10 @@ class TicTacToeTerminal(TicTacToeGame):
             self.joinable_games = message[CoordinationMessageType.JOINABLE_GAMES.value]
             self.joinable_games_updates.put(self.joinable_games)
         elif CoordinationMessageType.COORDINATOR.value in message:
-            coord_address = Address(message[CoordinationMessageType.COORDINATOR.value][0], message[CoordinationMessageType.COORDINATOR.value][1])
+            coord_address = Address(
+                message[CoordinationMessageType.COORDINATOR.value][0],
+                message[CoordinationMessageType.COORDINATOR.value][1]
+            )
             self.logger.debug(f"Received coordinator address {coord_address}")
             with self._lock:
                 old_client = self.client
@@ -237,5 +241,6 @@ def main_terminal(settings: Settings = None, message_to_show: str = None):
     :param settings: The optional :class:`Settings`.
     :param message_to_show: The optional message to display in the lobby menu.
     """
+    settings = settings or Settings()
     lobby_menu = LobbyMenu(size=settings.size)
     TicTacToeTerminal(settings, lobby_menu, message_to_show=message_to_show).run()
