@@ -1,16 +1,14 @@
-import unittest
-
+from unittest import TestCase
 from tic_tac_toe import TicTacToe
 from tic_tac_toe.model.game_object import Mark, Symbol, Player
 from tic_tac_toe.model.grid import Cell
 import tic_tac_toe.remote.presentation as presentation
 from pygame.event import Event
-import json
-import pathlib
+import json, pathlib
 
 DIR_CURRENT = pathlib.Path(__file__).parent
 
-class TestPresentation(unittest.TestCase):
+class TestPresentation(TestCase):
     def setUp(self):
         tic_tac_toe = TicTacToe(size=(600, 600))
         tic_tac_toe.players = [Player(Symbol.CROSS), Player(Symbol.NOUGHT)]

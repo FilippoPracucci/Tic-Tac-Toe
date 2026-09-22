@@ -13,7 +13,7 @@ class BaseTcpTest(TestCase):
     size_before = 0
 
     @classmethod
-    def server_callback(cls, event: str, connection: Connection=None, address: Address=None, error: Exception=None):
+    def server_callback(cls, event: str, connection: Connection = None, address: Address = None, error: Exception = None):
         logging.debug(f"Server Event: {event}, Address: {address}, Error: {error}")
 
     @classmethod
@@ -66,7 +66,6 @@ class TestTcpClientAndServer(BaseTcpTest):
 
 class TestTcpServerListening(BaseTcpTest):
     def test_server_listening(self):
-        self.size_before = len(self.server.connections)
         client = TcpClient(self.server_address)
         with client:
             client.send(self.message1)

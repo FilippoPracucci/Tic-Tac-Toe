@@ -30,7 +30,7 @@
                         "y": 300.0,
                         "$type": "Vector2"
                     },
-                    "name": "mark_cross",
+                    "name": "mark_(0,1)",
                     "cell": {
                         "x": 0,
                         "y": 1,
@@ -53,7 +53,7 @@
                         "y": 500.0,
                         "$type": "Vector2"
                     },
-                    "name": "mark_nought",
+                    "name": "mark_(2,2)",
                     "cell": {
                         "x": 2,
                         "y": 2,

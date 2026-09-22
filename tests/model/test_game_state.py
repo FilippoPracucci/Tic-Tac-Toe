@@ -62,10 +62,50 @@ class TestTicTacToe(TestCase):
         with self.assertRaises(ValueError):
             self.tictactoe.remove_mark(cell)
 
+    def test_remove_random_mark(self):
+        self.__place_marks([
+            Mark(Cell(0, 0), Symbol.CROSS),
+            Mark(Cell(1, 0), Symbol.CROSS),
+            Mark(Cell(0, 2), Symbol.CROSS)
+        ])
+        self.tictactoe.remove_random_mark()
+        self.assertEqual(2, len(self.tictactoe.marks))
+
+    def test_check_game_end(self):
+        self.__place_marks([
+            Mark(Cell(0, 0), Symbol.NOUGHT),
+            Mark(Cell(1, 0), Symbol.NOUGHT),
+            Mark(Cell(0, 2), Symbol.NOUGHT)
+        ])
+        self.assertEqual(None, self.tictactoe.check_game_end())
+        self.tictactoe.place_mark(Mark(Cell(2, 0), Symbol.NOUGHT))
+        self.assertEqual(self.tictactoe.player(Player(Symbol.NOUGHT)), self.tictactoe.check_game_end())
+
+    def test_reset_grid(self):
+        self.__place_marks([Mark(Cell(0, 0), Symbol.NOUGHT), Mark(Cell(1, 0), Symbol.CROSS)])
+        self.tictactoe.reset_grid()
+        self.assertEqual([], self.tictactoe.marks)
+        self.assertEqual(self.tictactoe.grid.dim, self.dim)
+
+    def test_update(self):
+        self.tictactoe.update(0.5)
+        self.assertEqual(0.5, self.tictactoe.time)
+        self.assertEqual(1, self.tictactoe.updates)
+
+    def test_change_turn(self):
+        self.tictactoe.add_player(Player(Symbol.CROSS))
+        self.assertEqual(Symbol.CROSS, self.tictactoe.turn)
+        self.tictactoe.change_turn()
+        self.assertEqual(Symbol.NOUGHT, self.tictactoe.turn)
+
     def test_override(self):
         other = TicTacToe(Settings.size, players=[Player(Symbol.CROSS)])
         other.marks = [Mark(Cell(0, 2), Symbol.CROSS), Mark(Cell(0, 0), Symbol.NOUGHT), Mark(Cell(1, 2), Symbol.CROSS)]
         self.tictactoe.players = [Player(Symbol.NOUGHT)]
-        self.tictactoe.marks = [Mark(Cell(0, 1), Symbol.CROSS), Mark(Cell(0, 0), Symbol.NOUGHT)]
+        self.__place_marks([Mark(Cell(0, 1), Symbol.CROSS), Mark(Cell(0, 0), Symbol.NOUGHT)])
         self.tictactoe.override(other)
         self.assertEqual(other, self.tictactoe)
+
+    def __place_marks(self, marks: list[Mark]):
+        for mark in marks:
+            self.tictactoe.place_mark(mark)
