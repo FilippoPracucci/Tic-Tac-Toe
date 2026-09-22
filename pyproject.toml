@@ -11,7 +11,11 @@ pygame = "^2.6.0"
 pygame-menu = "^4.5.2"
 
 [tool.poetry.scripts]
-tic-tac-toe = "tic-tac-toe:main"
+tic-tac-toe = "tic_tac_toe:main"
+lobby-coordinator = "tic_tac_toe.remote.centralised:main_lobby"
+terminal = "tic_tac_toe.remote.centralised.terminal:main_terminal"
+test = "tests.runner:run_tests"
+test-model = "tests.runner:run_model_tests"
 
 [build-system]
 requires = ["poetry-core"]
