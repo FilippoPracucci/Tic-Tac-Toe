@@ -225,15 +225,9 @@ class TicTacToeTerminal(TicTacToeGame):
 
     def restart(self) -> None:
         """Stop the current game and restart a new session."""
-        self.__clear_screen()
         self.stop()
         main_terminal(self.settings, message_to_show=self._message_to_show)
 
-    def __clear_screen(self) -> None:
-        """Clear the terminal screen."""
-        import platform, subprocess
-        command = 'cls' if platform.system().lower() == 'windows' else 'clear'
-        subprocess.run([command], shell=True)
 
 def main_terminal(settings: Settings = None, message_to_show: str = None):
     """Initialize and run the terminal game client.

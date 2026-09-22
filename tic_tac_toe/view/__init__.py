@@ -2,7 +2,9 @@ import pygame
 from pygame import draw, Surface
 from tic_tac_toe.model import TicTacToe, Symbol, Mark
 
-SCREEN_BACKGROUND_COLOR = "black"
+SCREEN_ENABLED_COLOR = "black"
+SCREEN_DISABLED_COLOR = "azure3"
+TEXT_COLOR = "black"
 GAME_OBJECT_COLOR = "white"
 GRID_LINE_WIDTH = 1
 LINE_WIDTH = 2
@@ -38,6 +40,7 @@ class ScreenTicTacToeView(TicTacToeView):
     def __init__(self, tic_tac_toe: TicTacToe, title: str, screen: Surface = None):
         super().__init__(tic_tac_toe)
         self._title = title
+        self._font = pygame.font.SysFont(None, 24)
         pygame.display.set_caption(title)
         self._screen = screen or pygame.display.set_mode(tic_tac_toe.size)
 
@@ -66,7 +69,10 @@ class ScreenTicTacToeView(TicTacToeView):
         return lambda *args, **kwargs: function(self._screen, *args, **kwargs)
 
     def render(self):
-        self._screen.fill(SCREEN_BACKGROUND_COLOR)
+        if self._tic_tac_toe.is_player_lobby_full():
+            self._screen.fill(SCREEN_ENABLED_COLOR)
+        else:
+            self.__render_disabled_screen()
         self.render_grid()
         for mark in self._tic_tac_toe.marks:
             self.render_mark(mark)
@@ -103,3 +109,14 @@ class ScreenTicTacToeView(TicTacToeView):
         else:
             line_points = [(x-point_plus_minus, y+point_plus_minus), (x+point_plus_minus, y-point_plus_minus)] 
         self.draw_lines(GAME_OBJECT_COLOR, closed=True, points=line_points, width=LINE_WIDTH)
+
+    def __render_disabled_screen(self):
+        self._screen.fill(SCREEN_DISABLED_COLOR)
+        text = pygame.font.SysFont(None, 24).render("Waiting for another player...", True, TEXT_COLOR)
+        self._screen.blit(text, self.__get_central_position_for_text(text))
+
+    def __get_central_position_for_text(self, text_surface: Surface) -> tuple[int, int]:
+        return (
+            self._screen.get_width() / 2 - text_surface.get_width() / 2,
+            self._screen.get_height() / 2 - text_surface.get_height() / 2
+        )
