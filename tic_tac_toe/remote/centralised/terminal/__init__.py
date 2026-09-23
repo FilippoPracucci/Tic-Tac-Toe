@@ -1,4 +1,5 @@
 from datetime import datetime
+import os
 from queue import Empty, Queue
 from typing import Any, Dict
 from pygame.event import Event
@@ -36,7 +37,6 @@ class TicTacToeTerminal(TicTacToeGame):
         self._lock = threading.RLock()
         self._thread_receiver = threading.Thread(target=self._handle_ingoing_messages, daemon=True)
         self._thread_receiver.start()
-        self._stop_event = threading.Event()
         self._stdin_reader = StdinReader.instance()
         self._thread_sender = threading.Thread(target=self._send_message, daemon=True)
         self.controller.post_event(LobbyEvent.REQUEST_JOINABLE_GAMES)
@@ -122,12 +122,15 @@ class TicTacToeTerminal(TicTacToeGame):
         return Controller(terminal.tic_tac_toe)
 
     def _handle_ingoing_messages(self) -> None:
-        while self.running:
-            try:
-                message = self.client.receive()
-                if message is not None:
-                    self.__handle_message(deserialize(message))
-            except ConnectionResetError:
+            while self.running:
+                try:
+                    message = self.client.receive()
+                except:
+                    message = None
+                else:
+                    if message:
+                        self.__handle_message(deserialize(message))
+                        continue
                 if self.running:
                     pygame.event.post(pygame.event.Event(LobbyEvent.COORDINATOR_STOPPED.value))
                     print(f"Game ended: coordinator stopped")
@@ -195,7 +198,11 @@ class TicTacToeTerminal(TicTacToeGame):
 
     def after_run(self) -> None:
         super().after_run()
+        self._thread_receiver.join(timeout=0.2)
+        self._thread_sender.join(timeout=0.2)
+        self._stdin_reader.stop()
         self.client.close()
+        os._exit(0)
 
     def _send_message(self) -> None:
         while self.running:

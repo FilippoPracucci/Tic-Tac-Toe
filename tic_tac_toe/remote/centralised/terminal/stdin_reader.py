@@ -17,6 +17,7 @@ class StdinReader:
             try:
                 line = input()
             except (EOFError, KeyboardInterrupt):
+                self.stop()
                 return
             self.queue.put(line)
 
@@ -27,3 +28,7 @@ class StdinReader:
             if cls._instance is None:
                 cls._instance = cls()
             return cls._instance
+
+    def stop(self) -> None:
+        """Stop the stdin reader thread."""
+        self._thread.join(timeout=0.2)

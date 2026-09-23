@@ -66,6 +66,8 @@ class LobbyCoordinator():
             while self.running:
                 self.controller.handle_events()
         finally:
+            self._processes_pool.terminate()
+            self._processes_pool.join()
             self.after_run()
 
     def stop(self) -> None:
