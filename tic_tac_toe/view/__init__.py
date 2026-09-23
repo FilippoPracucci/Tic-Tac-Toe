@@ -40,7 +40,6 @@ class ScreenTicTacToeView(TicTacToeView):
     def __init__(self, tic_tac_toe: TicTacToe, title: str, screen: Surface = None):
         super().__init__(tic_tac_toe)
         self._title = title
-        self._font = pygame.font.SysFont(None, 24)
         pygame.display.set_caption(title)
         self._screen = screen or pygame.display.set_mode(tic_tac_toe.size)
 
