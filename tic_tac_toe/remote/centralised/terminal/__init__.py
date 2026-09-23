@@ -133,7 +133,7 @@ class TicTacToeTerminal(TicTacToeGame):
                         continue
                 if self.running:
                     pygame.event.post(pygame.event.Event(LobbyEvent.COORDINATOR_STOPPED.value))
-                    print(f"Game ended: coordinator stopped")
+                    print(f"Coordinator stopped")
                     self.stop()
                 break
 
